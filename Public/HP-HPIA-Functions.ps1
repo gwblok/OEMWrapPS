@@ -226,7 +226,7 @@ function Get-HPDriverPackLatest {
                         Write-Verbose "Windows 10 $($SupportedWinXXBuilds[$loop_index]) Driver Pack Found"
                     }
                 }
-                while ($null-eq $DriverPack  -and $loop_index -lt $SupportedWinXXBuilds.Count)
+                while ($null -eq $DriverPack  -and $loop_index -lt $SupportedWinXXBuilds.Count)
             }
         }
     }
