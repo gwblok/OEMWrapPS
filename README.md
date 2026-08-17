@@ -39,14 +39,10 @@ Source: [garytown/Dell-EMPS.ps1](https://github.com/gwblok/garytown/blob/master/
 | `Get-DCUInstallDetails` | Returns DCU install details (version, app type, path) |
 | `Get-DCUExitInfo` | Provides descriptions for DCU exit codes |
 | `Get-DUPExitInfo` | Provides descriptions for Dell Update Package exit codes |
-| `Install-DCU` | Downloads and installs the latest Dell Command Update |
 | `Get-DCUAppUpdates` | Retrieves available app updates from DCU |
 | `Set-DCUSettings` | Configures DCU settings via dcu-cli.exe |
 | `Get-DCUSettings` | Lists current DCU settings from the registry |
 | `Invoke-DCU` | Invokes DCU actions (scan, apply updates, etc.) |
-| `Invoke-DCUBITS` | Invokes DCU using BITS for download |
-| `New-DCUOfflineCatalog` | Creates an offline DCU catalog (Beta) |
-| `New-DCUCatalogFile` | Downloads the DCU catalog file for a system model (Beta) |
 | `Get-DCUUpdateList` | Retrieves the list of available updates from DCU |
 | `Get-DellDeviceDetails` | Retrieves Dell device details (model, system ID) |
 | `Get-DellDeviceDriverPack` | Retrieves the driver pack for a Dell device |
@@ -78,7 +74,7 @@ Source: [garytown/Test-HPIASupport.ps1](https://github.com/gwblok/garytown/blob/
 
 - PowerShell 5.1 or higher
 - For Dell BIOS functions: Dell device with WMI BIOS support (manufactured 2018 or newer), administrative privileges
-- For Dell DCU functions: Dell Command Update installed (or use `Install-DCU`)
+- For Dell DCU functions: Dell Command Update installed
 - For Dell Warranty functions: Dell Command Integration Suite (auto-downloaded if not present)
 - For HP HPIA functions: HP device; HP Client Management Script Library (HPCMSL) for `Invoke-HPIAOfflineSync`
 

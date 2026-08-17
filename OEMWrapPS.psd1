@@ -12,7 +12,7 @@
 RootModule = 'OEMWrapPS.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.0'
+ModuleVersion = '1.0.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -75,10 +75,9 @@ FunctionsToExport = 'Get-DCUAppUpdates', 'Get-DCUExitInfo', 'Get-DCUInstallDetai
                'Get-DellDeviceDetails', 'Get-DellDeviceDriverPack', 
                'Get-DellDriverPackXML', 'Get-DellSupportedModels', 
                'Get-DellWarrantyInfo', 'Get-HPDriverPackLatest', 'Get-HPOSSupport', 
-               'Get-HPSoftPaqItems', 'Get-HPSoftpaqListLatest', 'Install-DCU', 
-               'Invoke-DCU', 'Invoke-DCUBITS', 'Invoke-DellIntuneAppPublishScript', 
-               'Invoke-HPIAOfflineSync', 'New-DCUCatalogFile', 
-               'New-DCUOfflineCatalog', 'Set-DCUSettings', 
+               'Get-HPSoftPaqItems', 'Get-HPSoftpaqListLatest', 
+               'Invoke-DCU', 'Invoke-DellIntuneAppPublishScript', 
+               'Invoke-HPIAOfflineSync', 'Set-DCUSettings', 
                'Set-DellBIOSAdminPassword', 'Set-DellBIOSSetting', 
                'Test-DellBIOSPassword', 'Test-DellBIOSWMISupport', 
                'Test-HPIASupport'
