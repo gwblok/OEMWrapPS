@@ -12,7 +12,7 @@
 RootModule = 'OEMWrapPS.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.2'
+ModuleVersion = '1.0.3'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -118,7 +118,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        # ReleaseNotes = ''
+        ReleaseNotes = 'See CHANGELOG.md for version history and release details: https://github.com/gwblok/OEMWrapPS/blob/main/CHANGELOG.md'
 
         # Prerelease string of this module
         # Prerelease = ''

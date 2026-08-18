@@ -78,6 +78,10 @@ Source: [garytown/Test-HPIASupport.ps1](https://github.com/gwblok/garytown/blob/
 - For Dell Warranty functions: Dell Command Integration Suite (auto-downloaded if not present)
 - For HP HPIA functions: HP device; HP Client Management Script Library (HPCMSL) for `Invoke-HPIAOfflineSync`
 
+## Changelog
+
+Version history and release details are tracked in [CHANGELOG.md](CHANGELOG.md).
+
 ## Credits
 
 - Gary Blok ([@gwblok](https://github.com/gwblok)) – GARYTOWN.COM

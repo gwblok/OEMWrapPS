@@ -354,7 +354,7 @@ function Get-DellBIOSSetting
         - ReadOnly: Boolean indicating if setting is read-only
 
         .Parameter SettingName
-        Optional parameter to retrieve a specific BIOS setting by name. If not specified, all settings are returned.
+        Optional parameter to retrieve one or more BIOS settings by name. If not specified, all settings are returned.
         
         .Outputs
         System.Management.Automation.PSCustomObject[]
@@ -378,6 +378,11 @@ function Get-DellBIOSSetting
         Write-Host "Possible Values: $($setting.PossibleValues -join ', ')"
 
         .Example
+        Retrieve multiple BIOS settings in one call
+
+        Get-DellBIOSSetting -SettingName @("ChasIntrusion", "Asset", "WakeOnLAN")
+
+        .Example
         Export all BIOS settings to a CSV file for documentation
 
         Get-DellBIOSSetting | Export-Csv -Path "C:\Temp\BIOSSettings.csv" -NoTypeInformation
@@ -392,7 +397,7 @@ function Get-DellBIOSSetting
         param
             (
                 [Parameter(mandatory=$false)] 
-                [String]$SettingName
+                [String[]]$SettingName
             )
 
 
@@ -412,25 +417,58 @@ function Get-DellBIOSSetting
             {
                 Write-Verbose "Connecting to Dell BIOS WMI Interface..."
 
+                $requestedSettingNames = @()
+
                 if ($SettingName)
                     {
-                        # Get specific BIOS setting from EnumerationAttribute
-                        Write-Verbose "Retrieving BIOS setting: $SettingName from EnumerationAttribute"
-                        $EnumSettings = Get-CimInstance -Namespace root/dcim/sysman/biosattributes -ClassName EnumerationAttribute -Filter "AttributeName='$SettingName'" -ErrorAction SilentlyContinue
-                        
-                        # Get specific BIOS setting from StringAttribute
-                        Write-Verbose "Retrieving BIOS setting: $SettingName from StringAttribute"
-                        $StringSettings = Get-CimInstance -Namespace root/dcim/sysman/biosattributes -ClassName StringAttribute -Filter "AttributeName='$SettingName'" -ErrorAction SilentlyContinue
-                        
-                        # Combine results
+                        # Normalize requested names and remove duplicates/empty values.
+                        $requestedSettingNames = $SettingName |
+                            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                            Select-Object -Unique
+
+                        if ($requestedSettingNames.Count -eq 0)
+                            {
+                                Write-Warning "No valid setting names were provided to SettingName."
+                                return $null
+                            }
+
                         $BIOSSettings = @()
-                        if ($EnumSettings) { $BIOSSettings += $EnumSettings }
-                        if ($StringSettings) { $BIOSSettings += $StringSettings }
+                        $missingSettings = @()
+
+                        foreach ($requestedSettingName in $requestedSettingNames)
+                            {
+                                # Escape single quotes for CIM/WQL filter values.
+                                $escapedSettingName = $requestedSettingName.Replace("'", "''")
+
+                                Write-Verbose "Retrieving BIOS setting: $requestedSettingName from EnumerationAttribute"
+                                $EnumSettings = Get-CimInstance -Namespace root/dcim/sysman/biosattributes -ClassName EnumerationAttribute -Filter "AttributeName='$escapedSettingName'" -ErrorAction SilentlyContinue
+
+                                Write-Verbose "Retrieving BIOS setting: $requestedSettingName from StringAttribute"
+                                $StringSettings = Get-CimInstance -Namespace root/dcim/sysman/biosattributes -ClassName StringAttribute -Filter "AttributeName='$escapedSettingName'" -ErrorAction SilentlyContinue
+
+                                $foundSettings = @()
+                                if ($EnumSettings) { $foundSettings += $EnumSettings }
+                                if ($StringSettings) { $foundSettings += $StringSettings }
+
+                                if ($foundSettings.Count -eq 0)
+                                    {
+                                        $missingSettings += $requestedSettingName
+                                    }
+                                else
+                                    {
+                                        $BIOSSettings += $foundSettings
+                                    }
+                            }
                         
                         if ($BIOSSettings.Count -eq 0)
                             {
-                                Write-Warning "BIOS setting '$SettingName' not found in either EnumerationAttribute or StringAttribute classes"
+                                Write-Warning "Requested BIOS setting(s) not found in either EnumerationAttribute or StringAttribute classes: $($requestedSettingNames -join ', ')"
                                 return $null
+                            }
+
+                        if ($missingSettings.Count -gt 0)
+                            {
+                                Write-Warning "Some requested BIOS setting(s) were not found: $($missingSettings -join ', ')"
                             }
                     }
                 else
@@ -449,7 +487,21 @@ function Get-DellBIOSSetting
                         if ($StringSettings) { $BIOSSettings += $StringSettings }
                     }
 
-                Write-Information "Successfully retrieved $($BIOSSettings.Count) BIOS settings" -InformationAction Continue
+                if ($SettingName)
+                    {
+                        if ($requestedSettingNames.Count -eq 1)
+                            {
+                                Write-Information "Successfully retrieved BIOS setting '$($requestedSettingNames[0])'" -InformationAction Continue
+                            }
+                        else
+                            {
+                                Write-Information "Successfully retrieved $($BIOSSettings.Count) BIOS setting entries across $($requestedSettingNames.Count) requested names" -InformationAction Continue
+                            }
+                    }
+                else
+                    {
+                        Write-Information "Successfully retrieved $($BIOSSettings.Count) BIOS settings" -InformationAction Continue
+                    }
             }
         catch
             {
@@ -678,12 +730,12 @@ function Set-DellBIOSSetting
                                                             }
 
                                         # Set a BIOS Attribute
-                                        Write-Information "Set Bios" -InformationAction Continue
+                                        Write-Information "Set BIOS setting $SettingName to $SettingValue" -InformationAction Continue
                                         $SetResult = Invoke-CimMethod -InputObject $BIOSInterface -MethodName SetAttribute -Arguments $argumentsWithPWD -ErrorAction Stop
 
                                         If ($SetResult.Status -eq 0)
                                             {
-                                                Write-Information "Message : BIOS setting success" -InformationAction Continue
+                                                Write-Information "Message : BIOS setting $SettingName successfully set to $SettingValue" -InformationAction Continue
                                                 return $true
                                             }
                                         else
@@ -709,7 +761,7 @@ function Set-DellBIOSSetting
                                         Write-Information $errMsg -InformationAction Continue
                                         If ($SetResult.Status -eq 0)
                                             {
-                                                Write-Information "Message : BIOS setting success" -InformationAction Continue
+                                                Write-Information "Message : BIOS setting $SettingName successfully set to $SettingValue" -InformationAction Continue
                                                 return $true
                                             }
                                         else
@@ -846,13 +898,13 @@ function Set-DellBIOSSetting
                                                                 SecHandle=@()
                                                             }
 
-                                        Write-Information "Set Bios Settings" -InformationAction Continue
+                                        Write-Information "Set BIOS setting $SettingName to $SettingValue" -InformationAction Continue
                                         # Set a BIOS Attribute ChasIntrusion to EnabledSilent (BIOS password is not set)
                                         $SetResult = Invoke-CimMethod -InputObject $BIOSInterface -MethodName SetAttribute -Arguments $argumentsNoPWD -ErrorAction Stop
 
                                         If ($SetResult.Status -eq 0)
                                             {
-                                                Write-Information "Message : BIOS setting success" -InformationAction Continue
+                                                Write-Information "Message : BIOS setting $SettingName successfully set to $SettingValue" -InformationAction Continue
                                                 return $true
                                             }
                                         else
@@ -945,7 +997,7 @@ function Set-DellBIOSSetting
                 Write-Information $errMsg -InformationAction Continue
                 If ($SetResult.Status -eq 0)
                     {
-                        Write-Information "Message : BIOS setting success" -InformationAction Continue
+                        Write-Information "Message : BIOS setting $SettingName successfully set to $SettingValue" -InformationAction Continue
                         return $true
                     }
                 else
