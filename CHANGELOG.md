@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.4] - 2026-08-19
+
+### Changed
+- Added BitLocker preflight handling to `Get-DellBIOSUpdates -Flash` so BIOS flashing is blocked when the volume is encrypting or decrypting.
+- When BitLocker protection is on and the drive is fully encrypted, the flash path now suspends BitLocker before flashing.
+- Improved BIOS flash messaging so the function reports why a flash is skipped before attempting the update.
+
 ## [1.0.3] - 2026-08-18
 
 ### Changed

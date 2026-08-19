@@ -865,12 +865,32 @@ Function Get-DellBIOSUpdates {
         }
     }
     if ($Flash){
-        #Test for Bitlocker
-        $BitlockerStatus = Get-BitLockerVolume -MountPoint $env:SystemDrive
+        #Test for BitLocker state before downloading or flashing the BIOS update.
+        try {
+            $BitlockerStatus = Get-BitLockerVolume -MountPoint $env:SystemDrive
+        }
+        catch {
+            $BitlockerStatus = $null
+            Write-Host "Unable to query BitLocker status. Continuing without preflight check: $($_.Exception.Message)"
+        }
+
         if ($BitlockerStatus -ne $null){
-            if ($BitlockerStatus.ProtectionStatus -eq "On"){
-                Write-Host "Bitlocker is On, Please Suspend Bitlocker before Flashing BIOS"
+            Write-Host "BitLocker status: Protection=$($BitlockerStatus.ProtectionStatus) | Volume=$($BitlockerStatus.VolumeStatus) | Encryption=$($BitlockerStatus.EncryptionPercentage)%"
+
+            if ($BitlockerStatus.VolumeStatus -in @('EncryptionInProgress','DecryptionInProgress')){
+                Write-Host "BitLocker is currently encrypting or decrypting this volume. BIOS flashing is blocked until that process finishes."
                 return
+            }
+
+            if ($BitlockerStatus.ProtectionStatus -eq "On"){
+                if ($BitlockerStatus.VolumeStatus -eq 'FullyEncrypted'){
+                    Write-Host "BitLocker protection is On and the volume is fully encrypted. Suspending BitLocker before flashing BIOS..."
+                    Suspend-BitLocker -MountPoint $env:SystemDrive -RebootCount 1
+                }
+                else {
+                    Write-Host "BitLocker protection is On, but the volume is not in a ready state for BIOS flashing. BIOS flashing will not be attempted."
+                    return
+                }
             }
         }
         #https://www.dell.com/support/kbdoc/en-us/000136752/command-line-switches-for-dell-bios-updates
