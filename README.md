@@ -9,15 +9,19 @@ OEMWrapPS consolidates commonly used OEM hardware management functions into a si
 ## Installation
 
 ```powershell
-# Clone the repository and import the module
-Import-Module .\OEMWrapPS\OEMWrapPS.psd1
+# Install from PowerShell Gallery
+Install-Module -Name OEMWrapPS -Repository PSGallery
+Import-Module OEMWrapPS
+
+# Or clone this repository and import the local module
+Import-Module .\OEMWrapPS.psd1
 ```
 
 ## Included Functions
 
 ### Dell – BIOS (via WMI/CIM)
 
-Source: [2PintLabs/SetDellBIOSSettingsWMI-Functions.ps1](https://github.com/gwblok/2PintLabs/blob/main/DeployR/BIOSSettings/Dell/NativeWMI/SetDellBIOSSettingsWMI-Functions.ps1)
+Source: [Public/Dell-BIOS-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/main/Public/Dell-BIOS-Functions.ps1)
 
 | Function | Description |
 |---|---|
@@ -29,7 +33,7 @@ Source: [2PintLabs/SetDellBIOSSettingsWMI-Functions.ps1](https://github.com/gwbl
 
 ### Dell – Command Update (DCU)
 
-Source: [garytown/Dell-EMPS.ps1](https://github.com/gwblok/garytown/blob/master/hardware/Dell/CommandUpdate/EMPS/Dell-EMPS.ps1)
+Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/main/Public/Dell-DCU-Functions.ps1)
 
 | Function | Description |
 |---|---|
@@ -49,9 +53,19 @@ Source: [garytown/Dell-EMPS.ps1](https://github.com/gwblok/garytown/blob/master/
 | `Get-DellBIOSUpdates` | Retrieves BIOS updates available for the device |
 | `Invoke-DellIntuneAppPublishScript` | Invokes the Dell Intune app publish script |
 
+### Dell – DCU Prerequisites
+
+Source: [Public/Get-DCUPreReqDOTNet.ps1](https://github.com/gwblok/OEMWrapPS/blob/main/Public/Get-DCUPreReqDOTNet.ps1)
+
+| Function | Description |
+|---|---|
+| `Test-UrlExists` | Tests whether a URL returns a successful response |
+| `Get-LatestDotNetVersion` | Finds the latest available .NET runtime version for a major and minor version |
+| `Install-DCUPreReqDOTNet` | Downloads and installs the required .NET Desktop Runtime prerequisite |
+
 ### Dell – Warranty
 
-Source: [garytown/Dell-EMPSWarranty.ps1](https://github.com/gwblok/garytown/blob/master/hardware/Dell/CommandUpdate/EMPS/Dell-EMPSWarranty.ps1)
+Source: [Public/Dell-Warranty-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/main/Public/Dell-Warranty-Functions.ps1)
 
 | Function | Description |
 |---|---|
@@ -59,7 +73,7 @@ Source: [garytown/Dell-EMPSWarranty.ps1](https://github.com/gwblok/garytown/blob
 
 ### HP – Image Assistant (HPIA)
 
-Source: [garytown/Test-HPIASupport.ps1](https://github.com/gwblok/garytown/blob/master/hardware/HP/EMPS/Test-HPIASupport.ps1)
+Source: [Public/HP-HPIA-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/main/Public/HP-HPIA-Functions.ps1)
 
 | Function | Description |
 |---|---|
