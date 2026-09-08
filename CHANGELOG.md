@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.6] - 2026-09-08
+
+### Changed
+- Reduced prerequisite logging in `Get-DCUAppUpdates` to report the first human-readable missing-prerequisite message instead of every detailed MSI diagnostic line.
+- Changed intermediate .NET version discovery messages in `Get-LatestDotNetVersion` to verbose output so normal runs show only the final version selected for installation.
+
 ## [1.0.5] - 2026-09-08
 
 ### Changed
