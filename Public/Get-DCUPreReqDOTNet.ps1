@@ -81,8 +81,9 @@ function Download-File {
 function Install-DCUPreReqDOTNet {
     [CmdletBinding()]
     param (
+        [Parameter(Mandatory=$true)]
         [ValidatePattern('^\d+\.\d+$')]
-        [string]$BaseVersion = '10.0',
+        [string]$BaseVersion,
         [string]$DownloadPath = "$env:TEMP\.NETInstallers"
     )
 
@@ -90,48 +91,20 @@ function Install-DCUPreReqDOTNet {
     $latestVersion = Get-LatestDotNetVersion -BaseVersion $BaseVersion
     Write-Host "Latest version detected: $latestVersion"
 
-# Construct download URLs
-$netRuntimeUrl = "https://builds.dotnet.microsoft.com/dotnet/Runtime/$latestVersion/dotnet-runtime-$latestVersion-win-x64.exe"
-$aspNetUrl = "https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/$latestVersion/aspnetcore-runtime-$latestVersion-win-x64.exe"
-$desktopRuntimeUrl = "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/$latestVersion/windowsdesktop-runtime-$latestVersion-win-x64.exe"
+    # Construct the Windows Desktop Runtime download URL
+    $desktopRuntimeUrl = "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/$latestVersion/windowsdesktop-runtime-$latestVersion-win-x64.exe"
 
-# Log the identified URLs
-Write-Host "Identified URLs for download:"
-Write-Host "- ASP.NET Core Runtime: $aspNetUrl"
-Write-Host "- .NET Runtime: $netRuntimeUrl"
-Write-Host "- .NET Desktop Runtime: $desktopRuntimeUrl"
+    Write-Host "Identified Windows Desktop Runtime URL: $desktopRuntimeUrl"
 
     # Define local file paths
     if (-not (Test-Path $DownloadPath)) {
         New-Item -ItemType Directory -Path $DownloadPath -Force | Out-Null
     }
 
-    $aspNetFile = "$DownloadPath\aspnetcore-runtime-$latestVersion-win-x64.exe"
-    $netRuntimeFile = "$DownloadPath\dotnet-runtime-$latestVersion-win-x64.exe"
     $desktopRuntimeFile = "$DownloadPath\windowsdesktop-runtime-$latestVersion-win-x64.exe"
 
-    # Download files
-    Download-File -Url $aspNetUrl -FilePath $aspNetFile
-    Download-File -Url $netRuntimeUrl -FilePath $netRuntimeFile
+    # Download the Windows Desktop Runtime
     Download-File -Url $desktopRuntimeUrl -FilePath $desktopRuntimeFile
-
-    # Install ASP.NET Core Runtime - /quiet /norestart
-    Write-Host "Installing ASP.NET Core Runtime $latestVersion..."
-    if (Test-Path $aspNetFile) {
-        Start-Process -FilePath $aspNetFile -ArgumentList "/quiet", "/norestart" -Wait -NoNewWindow
-        Write-Host "ASP.NET Core Runtime installation completed."
-    } else {
-        Write-Host "ASP.NET Core Runtime installer not found. Skipping installation."
-    }
-
-    # Install .NET Runtime
-    Write-Host "Installing .NET Runtime $latestVersion..."
-    if (Test-Path $netRuntimeFile) {
-        Start-Process -FilePath $netRuntimeFile -ArgumentList "/quiet", "/norestart" -Wait -NoNewWindow
-        Write-Host ".NET Runtime installation completed."
-    } else {
-        Write-Host ".NET Runtime installer not found. Skipping installation."
-    }
 
     # Install .NET Desktop Runtime
     Write-Host "Installing .NET Desktop Runtime $latestVersion..."
@@ -145,5 +118,5 @@ Write-Host "- .NET Desktop Runtime: $desktopRuntimeUrl"
     # Optional: Clean up temp files
     # Remove-Item -Path $DownloadPath -Recurse -Force
 
-    Write-Host "All .NET 10 runtimes installation process completed!"
+    Write-Host "Windows Desktop Runtime $BaseVersion installation process completed."
 }

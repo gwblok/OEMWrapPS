@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.5] - 2026-09-08
+
+### Changed
+- Added `-Install`, `-AutoInstallPreReqs`, `-UseWebRequest`, `-CheckPreReqs`, and `-DownloadPath` parameters to `Get-DCUAppUpdates` for DCU installation and prerequisite handling.
+- Added `Install-DCUPreReqDOTNet` to install the required .NET Desktop Runtime.
+- When a DCU installation first fails because a prerequisite is missing, `Get-DCUAppUpdates -AutoInstallPreReqs` now detects the required .NET version, installs it, and retries the DCU installation.
+
 ## [1.0.4] - 2026-08-19
 
 ### Changed
