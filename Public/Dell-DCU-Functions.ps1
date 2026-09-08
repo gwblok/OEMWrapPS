@@ -562,7 +562,7 @@ function Set-DCUSettings {
                 }
                 $ArgList = "/configure $systemRestartDeferralVar $deferralRestartIntervalVar $deferralRestartCountVar -outputlog=`"$LogPath\DCU-CLI-$($DateTimeStamp)-Configure-RestartDeferral.log`""
                 Write-Verbose $ArgList
-                $DCUCOnfig = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $ArgList -NoNewWindow -PassThru -Wait
+                $DCUConfig = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $ArgList -NoNewWindow -PassThru -Wait
                 if ($DCUConfig.ExitCode -ne 0){
                     $ExitInfo = Get-DCUExitInfo -DCUExit $DCUConfig.ExitCode
                     Write-Verbose "Exit: $($DCUConfig.ExitCode)"
@@ -575,7 +575,7 @@ function Set-DCUSettings {
                 [string]$systemRestartDeferralVar = "-systemRestartDeferral=$systemRestartDeferral"
                 $ArgList = "/configure $systemRestartDeferralVar -outputlog=`"$LogPath\DCU-CLI-$($DateTimeStamp)-Configure-RestartDeferral.log`""
                 Write-Verbose $ArgList
-                $DCUCOnfig = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $ArgList -NoNewWindow -PassThru -Wait
+                $DCUConfig = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $ArgList -NoNewWindow -PassThru -Wait
                 if ($DCUConfig.ExitCode -ne 0){
                     $ExitInfo = Get-DCUExitInfo -DCUExit $DCUConfig.ExitCode
                     Write-Verbose "Exit: $($DCUConfig.ExitCode)"
@@ -601,7 +601,7 @@ function Set-DCUSettings {
         $ExcludeUpdatesFromLastNDaysVar = "-delaydays=$ExcludeUpdatesFromLastNDays -outputlog=`"$LogPath\DCU-CLI-$($DateTimeStamp)-Configure-ExcludeUpdatesFromLastNDays.log`""
         $ArgList = "/configure $ExcludeUpdatesFromLastNDaysVar"
         Write-Verbose $ArgList
-        $DCUCOnfig = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $ArgList -NoNewWindow -PassThru -Wait
+        $DCUConfig = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $ArgList -NoNewWindow -PassThru -Wait
         if ($DCUConfig.ExitCode -ne 0){
             $ExitInfo = Get-DCUExitInfo -DCUExit $DCUConfig.ExitCode
             Write-Verbose "Exit: $($DCUConfig.ExitCode)"

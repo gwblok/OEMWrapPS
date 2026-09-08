@@ -131,7 +131,7 @@ function Get-DellWarrantyInfo {
         $ServiceTag = (Get-Content -Path $CSVImportPath).Trim()
         Write-Verbose -Message "CSVImportPath Path: $CSVImportPath"
         write-verbose -Message "Start-Process -FilePath $DellWarrantyCLIPath -ArgumentList `"/I=$($CSVImportPath) /E=$($ExportPath)`" -Wait -WindowStyle Hidden"
-        $CLI = Start-Process -FilePath $DellWarrantyCLIPath -ArgumentList "/I=$($CSVPath) /E=$($ExportPath)" -Wait -WindowStyle Hidden -PassThru
+        $CLI = Start-Process -FilePath $DellWarrantyCLIPath -ArgumentList "/I=$($CSVImportPath) /E=$($ExportPath)" -Wait -WindowStyle Hidden -PassThru
         Write-Verbose -Message "CLI Exit Code: $($CLI.ExitCode)"
         $Data = Get-Content -Path $ExportPath | ConvertFrom-Csv
         return $data
