@@ -256,9 +256,13 @@ Function Get-DCUAppUpdates {
         [string]$SystemSKUNumber,
         [switch]$Latest,
         [switch]$Install,
-        [switch]$UseWebRequest
+        [switch]$AutoInstallPreReqs,
+        [switch]$UseWebRequest,
+        [switch]$CheckPreReqs,
+        [string]$DownloadPath = "$env:ProgramData\EMPS\DellCabDownloads"
     )
     
+    $DownloadPathSpecified = $PSBoundParameters.ContainsKey('DownloadPath')
     $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
     if (!($SystemSKUNumber)) {
         if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems"}
@@ -278,10 +282,9 @@ Function Get-DCUAppUpdates {
             If ($DCUVersionInstalled -ne $false){[Version]$CurrentVersion = $DCUVersionInstalled}
             Else {[Version]$CurrentVersion = 0.0.0.0}
             if ($DCUVersion -gt $CurrentVersion){
-                $temproot = "$env:windir\temp"
-                $DellCabDownloadsPath = "$temproot\DellCabDownloads"
+                $DellCabDownloadsPath = $DownloadPath
+                [void][System.IO.Directory]::CreateDirectory($DellCabDownloadsPath)
                 if (!(Test-Path $DellCabExtractPath)){$null = New-Item -Path $DellCabExtractPath -ItemType Directory -Force}
-                $LogFilePath = "$env:ProgramData\EMPS\Logs"
                 $TargetFileName = ($CommandUpdateAppsLatest.path).Split("/") | Select-Object -Last 1
                 $TargetLink = $CommandUpdateAppsLatest.path
                 $TargetFilePathName = "$($DellCabDownloadsPath)\$($TargetFileName)"
@@ -305,6 +308,54 @@ Function Get-DCUAppUpdates {
                     write-output "Log file = $LogFileName"
                     $Process = Start-Process "$TargetFilePathName" $Arguments -Wait -PassThru
                     write-output "Update Complete with Exitcode: $($Process.ExitCode)"
+                    $ExitInfo = Get-DUPExitInfo -DUPExit $Process.ExitCode
+                    if ($ExitInfo){
+                        Write-Output "Exit Status: $($ExitInfo.DisplayName) - $($ExitInfo.Description)"
+                    }
+                    else{
+                        Write-Output "Exit Status: Unknown - No matching DUP exit code information was found."
+                    }
+                    if ($Process.ExitCode -eq 4){
+                        if (Test-Path -LiteralPath $LogFileName){
+                            $PrerequisiteMessages = Get-Content -LiteralPath $LogFileName | Where-Object {
+                                $_ -match '(?i)(needs to be installed|prerequisite|dependency)'
+                            } | ForEach-Object {
+                                ($_.Trim() -replace '^\d+:\s*','')
+                            } | Select-Object -Unique
+                            if ($PrerequisiteMessages){
+                                foreach ($PrerequisiteMessage in $PrerequisiteMessages){
+                                    Write-Output "Missing prerequisite: $PrerequisiteMessage"
+                                }
+                                $PrereqVersionMatch = [regex]::Match(($PrerequisiteMessages -join "`n"), 'Microsoft \.NET Desktop Runtime\s+(?<Version>\d+\.\d+)')
+                                if ($PrereqVersionMatch.Success){
+                                    $PrereqVersion = $PrereqVersionMatch.Groups['Version'].Value
+                                    if ($AutoInstallPreReqs){
+                                        Write-Output "Installing missing .NET prerequisite version $PrereqVersion"
+                                        Install-DCUPreReqDOTNet -BaseVersion $PrereqVersion
+                                        Write-Output "Retrying DCU installation after installing the prerequisite"
+                                        $Process = Start-Process "$TargetFilePathName" $Arguments -Wait -PassThru
+                                        Write-Output "DCU retry completed with Exitcode: $($Process.ExitCode)"
+                                        $RetryExitInfo = Get-DUPExitInfo -DUPExit $Process.ExitCode
+                                        if ($RetryExitInfo){
+                                            Write-Output "Retry Exit Status: $($RetryExitInfo.DisplayName) - $($RetryExitInfo.Description)"
+                                        }
+                                        else{
+                                            Write-Output "Retry Exit Status: Unknown - No matching DUP exit code information was found."
+                                        }
+                                    }
+                                    else{
+                                        Write-Output "Automatic prerequisite installation is disabled. Use -AutoInstallPreReqs to install it and retry DCU."
+                                    }
+                                }
+                            }
+                            else{
+                                Write-Output "Missing prerequisite: The installer log did not identify the required prerequisite."
+                            }
+                        }
+                        else{
+                            Write-Output "Missing prerequisite: Installer log not found at $LogFileName"
+                        }
+                    }
                     If($Process -ne $null -and $Process.ExitCode -eq '2'){
                         Write-Verbose "Reboot Required"
                     }
@@ -319,6 +370,28 @@ Function Get-DCUAppUpdates {
             }
         }
         else{
+            if ($DownloadPathSpecified){
+                [void][System.IO.Directory]::CreateDirectory($DownloadPath)
+                $TargetFileName = ($CommandUpdateAppsLatest.path).Split("/") | Select-Object -Last 1
+                $TargetLink = $CommandUpdateAppsLatest.path
+                $TargetFilePathName = Join-Path -Path $DownloadPath -ChildPath $TargetFileName
+                if ($UseWebRequest){
+                    Write-Verbose "Using WebRequest to download the file"
+                    Invoke-WebRequest -Uri $TargetLink -OutFile $TargetFilePathName -UseBasicParsing -Verbose
+                }
+                else{
+                    Write-Verbose "Using BITS to download the file"
+                    Start-BitsTransfer -Source $TargetLink -Destination $TargetFilePathName -DisplayName $TargetFileName -Description "Downloading Dell Command Update" -ErrorAction SilentlyContinue
+                }
+                if (!(Test-Path $TargetFilePathName)){
+                    Invoke-WebRequest -Uri $TargetLink -OutFile $TargetFilePathName -UseBasicParsing -Verbose
+                }
+                if (Test-Path $TargetFilePathName){
+                    return $TargetFilePathName
+                }
+                Write-Verbose "FAILED TO DOWNLOAD DCU"
+                return
+            }
             if ($Latest){
                 Return $CommandUpdateAppsLatest
             }

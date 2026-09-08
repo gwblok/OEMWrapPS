@@ -80,7 +80,8 @@ FunctionsToExport = 'Get-DCUAppUpdates', 'Get-DCUExitInfo', 'Get-DCUInstallDetai
                'Invoke-HPIAOfflineSync', 'Set-DCUSettings', 
                'Set-DellBIOSAdminPassword', 'Set-DellBIOSSetting', 
                'Test-DellBIOSPassword', 'Test-DellBIOSWMISupport', 
-               'Test-HPIASupport'
+               'Test-HPIASupport', 'Test-UrlExists', 'Get-LatestDotNetVersion',
+               'Install-DCUPreReqDOTNet'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
