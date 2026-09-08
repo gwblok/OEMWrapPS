@@ -323,9 +323,14 @@ Function Get-DCUAppUpdates {
                                 ($_.Trim() -replace '^\d+:\s*','')
                             } | Select-Object -Unique
                             if ($PrerequisiteMessages){
-                                foreach ($PrerequisiteMessage in $PrerequisiteMessages){
-                                    Write-Output "Missing prerequisite: $PrerequisiteMessage"
+                                $PrerequisiteSummary = $PrerequisiteMessages |
+                                    Where-Object { $_ -match '(?i)needs to be installed' } |
+                                    Select-Object -First 1
+                                if (-not $PrerequisiteSummary){
+                                    $PrerequisiteSummary = $PrerequisiteMessages | Select-Object -First 1
                                 }
+                                $PrerequisiteSummary = $PrerequisiteSummary -replace '(?i)^Missing prerequisite:\s*',''
+                                Write-Output "Missing prerequisite: $PrerequisiteSummary"
                                 $PrereqVersionMatch = [regex]::Match(($PrerequisiteMessages -join "`n"), 'Microsoft \.NET Desktop Runtime\s+(?<Version>\d+\.\d+)')
                                 if ($PrereqVersionMatch.Success){
                                     $PrereqVersion = $PrereqVersionMatch.Groups['Version'].Value
