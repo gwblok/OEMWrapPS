@@ -41,7 +41,7 @@ function Get-LatestDotNetVersion {
 
         if (Test-UrlExists -Url $url) {
             $latestVersion = $currentVersion
-            Write-Host "Found valid version: $latestVersion"
+            Write-Verbose "Found valid version: $latestVersion"
         } else {
             # If the URL doesn't exist and we've found at least one valid version, stop
             if ($currentPatch -gt $patch) {
