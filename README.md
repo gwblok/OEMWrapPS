@@ -50,8 +50,19 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DCUUpdateList` | Retrieves the list of available updates from DCU |
 | `Get-DellDeviceDetails` | Retrieves Dell device details (model, system ID) |
 | `Get-DellDeviceDriverPack` | Retrieves the driver pack for a Dell device |
-| `Get-DellBIOSUpdates` | Retrieves BIOS updates available for the device |
+| `Get-DellBIOSUpdates` | Retrieves BIOS updates; `-Flash` installs the latest update and reports Dell DUP exit-code and log details |
 | `Invoke-DellIntuneAppPublishScript` | Invokes the Dell Intune app publish script |
+
+#### BIOS Flash Results
+
+Use `Get-DellBIOSUpdates -Flash` to download and silently run the latest Dell
+BIOS update. The function returns an object containing `ExitCode`, `CodeName`,
+`Description`, `LogPath`, and `Success`. The description and code name are
+updated from the Dell installer log when it contains `Error:` or `Exit Code =`
+entries; otherwise, the documented Dell DUP exit-code information is used.
+
+Dell's BIOS DUP exit codes are documented in [Using DUP BIOS Updates With
+Administrator Options](https://www.dell.com/support/kbdoc/en-us/000148745/dup-bios-updates).
 
 ### Dell – DCU Prerequisites
 
@@ -91,6 +102,7 @@ Source: [Public/HP-HPIA-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/
 - For Dell DCU functions: Dell Command Update installed
 - For Dell Warranty functions: Dell Command Integration Suite (auto-downloaded if not present)
 - For HP HPIA functions: HP device; HP Client Management Script Library (HPCMSL) for `Invoke-HPIAOfflineSync`
+- BIOS flashing may require administrative privileges, BitLocker suspension, a charged battery, and a restart.
 
 ## Changelog
 

@@ -242,9 +242,9 @@ Function Get-DUPExitInfo {
         @{ExitCode = 5; DisplayName = "Qualification error"; Description = "A QUAL_HARD_ERROR cannot be suppressed by using the /f switch."}
         @{ExitCode = 6; DisplayName = "Rebooting computer"; Description = "The computer is being rebooted."}
         @{ExitCode = 7; DisplayName = "Password validation error"; Description = "Password not provided or incorrect password provided for BIOS execution"}
-        @{ExitCode = 8; DisplayName = "Requested Downgrade is not allowed."; Description = "Downgrading the BIOS to the version run is not allowed."}
-        @{ExitCode = 8; DisplayName = "RPM verification has failed"; Description = "The Linux DUP framework uses RPM verification to ensure the security of all DUP-dependent Linux utilities. If security is compromised, the framework displays a message and an RPM Verify Legend, and then exits with exit code 9."}
-        @{ExitCode = 8; DisplayName = "Some other error"; Description = "This exit code is for all errors that have not been specified in BIOS exit codes 0-9. That is, battery error, EC error, HW failure, so forth."}
+        @{ExitCode = 8; DisplayName = "Requested downgrade is not allowed"; Description = "Downgrading the BIOS to the requested version is not allowed."}
+        @{ExitCode = 9; DisplayName = "RPM verification failed"; Description = "The Linux DUP framework failed RPM verification. The update was not successful."}
+        @{ExitCode = 10; DisplayName = "EC unspecified error"; Description = "An unspecified error occurred, such as a battery error, embedded-controller error, or hardware failure."}
         )
     $DUPExitInfo | Where-Object {$_.ExitCode -eq $DUPExit}
 }
@@ -987,14 +987,39 @@ Function Get-DellBIOSUpdates {
                 $BIOSArgs = "/s /l=$UpdateLocalPath.log"
             }
             $InstallUpdate = Start-Process -FilePath $UpdateLocalPath -ArgumentList $BIOSArgs -Wait -PassThru
-            Write-Host "Exit Code: $($InstallUpdate.ExitCode)"
-            if ($InstallUpdate.ExitCode -ne 0){
-                $ExitInfo = Get-DUPExitInfo -DUPExit $InstallUpdate.ExitCode
-                Write-Host "Exit: $($InstallUpdate.ExitCode)"
-                Write-Host "Code Name: $($ExitInfo.DisplayName)"
-                Write-Host "Description: $($ExitInfo.Description)"
+            $LogPath = "$UpdateLocalPath.log"
+            $ExitInfo = Get-DUPExitInfo -DUPExit $InstallUpdate.ExitCode | Select-Object -First 1
+            if (-not $ExitInfo) {
+                $ExitInfo = [PSCustomObject]@{
+                    ExitCode = $InstallUpdate.ExitCode
+                    DisplayName = 'Unknown'
+                    Description = 'No matching Dell DUP BIOS exit-code documentation was found.'
+                }
             }
-            return
+
+            if (Test-Path -Path $LogPath) {
+                $LogContent = Get-Content -Path $LogPath -Raw -ErrorAction SilentlyContinue
+                $LoggedExitCode = [regex]::Match($LogContent, '(?im)^\s*Exit Code\s*=\s*(?<Value>.+?)\s*$')
+                $LoggedError = [regex]::Match($LogContent, '(?im)^\s*Error:\s*(?<Value>.+?)\s*$')
+
+                if ($LoggedExitCode.Success) {
+                    $ExitInfo.DisplayName = $LoggedExitCode.Groups['Value'].Value.Trim()
+                }
+                if ($LoggedError.Success) {
+                    $ExitInfo.Description = $LoggedError.Groups['Value'].Value.Trim()
+                }
+            }
+            Write-Host "Exit Code: $($ExitInfo.ExitCode)"
+            Write-Host "Code Name: $($ExitInfo.DisplayName)"
+            Write-Host "Description: $($ExitInfo.Description)"
+            return [PSCustomObject]@{
+                Update = $UpdateFileName
+                ExitCode = $ExitInfo.ExitCode
+                CodeName = $ExitInfo.DisplayName
+                Description = $ExitInfo.Description
+                LogPath = $LogPath
+                Success = $ExitInfo.ExitCode -eq 0
+            }
         }
         else {
             Write-Host "File Not Found: $UpdateFileName"

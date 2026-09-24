@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.7] - 2026-09-24
+
+### Changed
+- Updated `Get-DellBIOSUpdates -Flash` to decode Dell DUP BIOS exit codes for successful, reboot-required, dependency, password, downgrade, RPM verification, and unspecified hardware/EC errors.
+- Added parsing of the Dell BIOS installer log so `Error:` text is returned as the result description and `Exit Code =` text is returned as the code name.
+- `Get-DellBIOSUpdates -Flash` now returns structured flash results including the update name, numeric exit code, code name, description, log path, and success status.
+- Corrected the documented mappings for Dell DUP exit codes 8, 9, and 10.
+
 ## [1.0.6] - 2026-09-08
 
 ### Changed
