@@ -440,7 +440,21 @@ function Set-DCUSettings {
     [switch]$scheduleAuto,
     [string]$CustomCatalogPath, #Path to a custom catalog file for Offline DCU or just to lock in a specific catalog
     [ValidateRange(1,45)]
-    [int]$ExcludeUpdatesFromLastNDays #Excludes updates released within the last N days from being applied
+    [int]$ExcludeUpdatesFromLastNDays, #Excludes updates released within the last N days from being applied
+    [ValidateSet('scheduleAuto','scheduleManual','scheduleDaily','scheduleWeekly','scheduleMonthly')]
+    [string]$Schedule,
+    [string]$ScheduleDaily,
+    [string]$ScheduleWeekly,
+    [string]$ScheduleMonthly,
+    [ValidateSet('Enable','Disable')]
+    [string]$UpdateDeviceCategoryFilter = 'Disable',
+    [string[]]$UpdateDeviceCategories,
+    [ValidateSet('Enable','Disable')]
+    [string]$UpdateSeverityFilter = 'Disable',
+    [string[]]$UpdateSeverities,
+    [ValidateSet('Enable','Disable')]
+    [string]$UpdateTypeFilter = 'Disable',
+    [string[]]$UpdateTypes
     )
     
     $DCUPath = (Get-DCUInstallDetails).DCUPath
@@ -448,6 +462,25 @@ function Set-DCUSettings {
     $LogPath = "$env:SystemDrive\Users\Dell\EMPS\Logs"
     Write-Verbose "Log Path: $LogPath"
     $DateTimeStamp = Get-Date -Format "yyyyMMdd-HHmmss"
+
+    function Invoke-DCUConfigure {
+        param(
+            [Parameter(Mandatory)]
+            [string]$Setting,
+            [string]$LogName = $Setting
+        )
+
+        $configureArgs = "/configure $Setting -outputlog=`"$LogPath\DCU-CLI-$($DateTimeStamp)-Configure-$LogName.log`""
+        Write-Verbose $configureArgs
+        $configureProcess = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $configureArgs -NoNewWindow -PassThru -Wait
+        if ($configureProcess.ExitCode -ne 0) {
+            $exitInfo = Get-DCUExitInfo -DCUExit $configureProcess.ExitCode
+            Write-Verbose "Exit: $($configureProcess.ExitCode)"
+            Write-Verbose "Description: $($exitInfo.Description)"
+            Write-Verbose "Resolution: $($exitInfo.Resolution)"
+        }
+        return $configureProcess
+    }
     #$ArgList = "$ActionVar $updateSeverityVar $updateTypeVar $updateDeviceCategoryVar -outputlog=`"$LogPath\DCU-CLI-$($DateTimeStamp)-$Action.log`""
 
     if ($advancedDriverRestore){
@@ -613,6 +646,27 @@ function Set-DCUSettings {
             Write-Verbose "Description: $($ExitInfo.Description)"
             Write-Verbose "Resolution: $($ExitInfo.Resolution)"
         }
+    }
+
+    if ($Schedule) {
+        switch ($Schedule) {
+            'scheduleAuto' { $scheduleSetting = '-scheduleAuto' }
+            'scheduleManual' { $scheduleSetting = '-scheduleManual' }
+            'scheduleDaily' { $scheduleSetting = "-scheduleDaily=$ScheduleDaily" }
+            'scheduleWeekly' { $scheduleSetting = "-scheduleWeekly=$ScheduleWeekly,$ScheduleDaily" }
+            'scheduleMonthly' { $scheduleSetting = "-scheduleMonthly=$ScheduleMonthly,$ScheduleWeekly,$ScheduleDaily" }
+        }
+        Invoke-DCUConfigure -Setting $scheduleSetting -LogName 'schedule'
+    }
+
+    if ($UpdateDeviceCategoryFilter -eq 'Enable' -and $UpdateDeviceCategories) {
+        Invoke-DCUConfigure -Setting "-updateDeviceCategory=$($UpdateDeviceCategories -join ',')" -LogName 'updateDeviceCategory'
+    }
+    if ($UpdateSeverityFilter -eq 'Enable' -and $UpdateSeverities) {
+        Invoke-DCUConfigure -Setting "-updateSeverity=$($UpdateSeverities -join ',')" -LogName 'updateSeverity'
+    }
+    if ($UpdateTypeFilter -eq 'Enable' -and $UpdateTypes) {
+        Invoke-DCUConfigure -Setting "-updateType=$($UpdateTypes -join ',')" -LogName 'updateType'
     }
 }
 function Get-DCUSettings {

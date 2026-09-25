@@ -44,7 +44,7 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DCUExitInfo` | Provides descriptions for DCU exit codes |
 | `Get-DUPExitInfo` | Provides descriptions for Dell Update Package exit codes |
 | `Get-DCUAppUpdates` | Retrieves available app updates from DCU |
-| `Set-DCUSettings` | Configures DCU settings via dcu-cli.exe |
+| `Set-DCUSettings` | Configures DCU settings via dcu-cli.exe, including schedules, deferrals, delay days, and update filters |
 | `Get-DCUSettings` | Lists current DCU settings from the registry |
 | `Invoke-DCU` | Invokes DCU actions (scan, apply updates, etc.) |
 | `Get-DCUUpdateList` | Retrieves the list of available updates from DCU |
@@ -52,6 +52,15 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DellDeviceDriverPack` | Retrieves the driver pack for a Dell device |
 | `Get-DellBIOSUpdates` | Retrieves BIOS updates; `-Details` returns BIOS status, and `-Flash` installs the latest update with Dell DUP exit-code and log details |
 | `Invoke-DellIntuneAppPublishScript` | Invokes the Dell Intune app publish script |
+
+`Set-DCUSettings` supports hard-coded or scripted configuration for:
+
+- Installation and restart deferrals.
+- Schedule mode, daily time, weekly day/time, and monthly week/day/time.
+- Delay days for excluding recently released updates.
+- Device category filters such as audio, video, network, chipset, storage, input, and others.
+- Severity filters such as security, critical, recommended, and optional.
+- Update type filters such as BIOS, firmware, driver, application, utility, and others.
 
 Use `Get-DellBIOSUpdates -Details` to return a status object with:
 

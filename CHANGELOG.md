@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.10] - 2026-09-25
+
+### Added
+- Extended `Set-DCUSettings` with schedule frequency and time configuration.
+- Added delay-days configuration for excluding recently released updates.
+- Added device category, severity, and update type filter configuration.
+- Added support for scripted configuration of the expanded DCU settings surface.
+
 ## [1.0.9] - 2026-09-25
 
 ### Changed
