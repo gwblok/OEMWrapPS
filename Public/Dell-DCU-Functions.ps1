@@ -907,6 +907,7 @@ Function Get-DellBIOSUpdates {
         [string]$SystemSKUNumber,
         [switch]$Latest,
         [switch]$Check, #This will find the latest BIOS update and compare it to the current BIOS version
+        [switch]$Details,
         [switch]$Flash,
         [string]$Password,
         [string]$DownloadPath
@@ -916,6 +917,61 @@ Function Get-DellBIOSUpdates {
     if (!($SystemSKUNumber)) {
         if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems, or please provide a SKU"}
         $SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
+    }
+
+    if ($Details){
+        if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems"}
+
+        $BiosInfo = Get-CimInstance -ClassName Win32_BIOS
+        [version]$CurrentBIOSVersion = $BiosInfo.SMBIOSBIOSVersion
+        $CurrentBIOSReleaseDate = $null
+        if ($BiosInfo.ReleaseDate){
+            try {
+                $CurrentBIOSReleaseDate = [System.Management.ManagementDateTimeConverter]::ToDateTime($BiosInfo.ReleaseDate)
+            }
+            catch {
+                $CurrentBIOSReleaseDate = $BiosInfo.ReleaseDate
+            }
+        }
+
+        $AllBIOSUpdates = @(Get-DCUUpdateList -SystemSKUNumber $SystemSKUNumber -updateType BIOS)
+        $LatestBIOS = $AllBIOSUpdates | Sort-Object -Property ReleaseDate -Descending | Select-Object -First 1
+        if ($LatestBIOS){
+            [version]$LatestBIOSVersion = $LatestBIOS.DellVersion
+            $LatestBIOSReleaseDate = $LatestBIOS.ReleaseDate
+            $UpdateAvailable = $CurrentBIOSVersion -lt $LatestBIOSVersion
+            $BIOSIsCurrent = $CurrentBIOSVersion -ge $LatestBIOSVersion
+            $ReleasesSinceCurrent = @(
+                $AllBIOSUpdates |
+                    Where-Object {
+                        try {
+                            $CandidateVersion = [version]$_.DellVersion
+                            $CandidateVersion -gt $CurrentBIOSVersion
+                        }
+                        catch {
+                            $false
+                        }
+                    } |
+                    Select-Object -ExpandProperty DellVersion -Unique
+            ).Count
+        }
+        else {
+            $LatestBIOSVersion = $null
+            $LatestBIOSReleaseDate = $null
+            $UpdateAvailable = $false
+            $BIOSIsCurrent = $true
+            $ReleasesSinceCurrent = 0
+        }
+
+        return [PSCustomObject]@{
+            CurrentBIOSVersion = $CurrentBIOSVersion
+            CurrentBIOSReleaseDate = $CurrentBIOSReleaseDate
+            LatestBIOSVersion = $LatestBIOSVersion
+            LatestBIOSReleaseDate = $LatestBIOSReleaseDate
+            UpdateAvailable = $UpdateAvailable
+            BIOSIsCurrent = $BIOSIsCurrent
+            ReleasesSinceCurrent = $ReleasesSinceCurrent
+        }
     }
     
     if ($Check){
@@ -1018,7 +1074,8 @@ Function Get-DellBIOSUpdates {
                 CodeName = $ExitInfo.DisplayName
                 Description = $ExitInfo.Description
                 LogPath = $LogPath
-                Success = $ExitInfo.ExitCode -eq 0
+                Success = $ExitInfo.ExitCode -in @(0, 2)
+                RebootRequired = $ExitInfo.ExitCode -eq 2
             }
         }
         else {

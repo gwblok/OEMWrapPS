@@ -50,14 +50,26 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DCUUpdateList` | Retrieves the list of available updates from DCU |
 | `Get-DellDeviceDetails` | Retrieves Dell device details (model, system ID) |
 | `Get-DellDeviceDriverPack` | Retrieves the driver pack for a Dell device |
-| `Get-DellBIOSUpdates` | Retrieves BIOS updates; `-Flash` installs the latest update and reports Dell DUP exit-code and log details |
+| `Get-DellBIOSUpdates` | Retrieves BIOS updates; `-Details` returns BIOS status, and `-Flash` installs the latest update with Dell DUP exit-code and log details |
 | `Invoke-DellIntuneAppPublishScript` | Invokes the Dell Intune app publish script |
+
+Use `Get-DellBIOSUpdates -Details` to return a status object with:
+
+- `CurrentBIOSVersion` and `CurrentBIOSReleaseDate`
+- `LatestBIOSVersion` and `LatestBIOSReleaseDate`
+- `UpdateAvailable`
+- `BIOSIsCurrent`
+- `ReleasesSinceCurrent`, the count of distinct BIOS releases newer than the installed version
+
+For example, a system running BIOS 1.37 with BIOS 1.38 available returns
+`ReleasesSinceCurrent` as `1`.
 
 #### BIOS Flash Results
 
 Use `Get-DellBIOSUpdates -Flash` to download and silently run the latest Dell
 BIOS update. The function returns an object containing `ExitCode`, `CodeName`,
-`Description`, `LogPath`, and `Success`. The description and code name are
+`Description`, `LogPath`, `Success`, and `RebootRequired`. Dell DUP exit code 2
+is treated as a successful update that requires a reboot. The description and code name are
 updated from the Dell installer log when it contains `Error:` or `Exit Code =`
 entries; otherwise, the documented Dell DUP exit-code information is used.
 

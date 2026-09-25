@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.9] - 2026-09-25
+
+### Changed
+- Updated `Get-DellBIOSUpdates -Flash` so Dell DUP exit code 2 is reported as a successful update with reboot required.
+- Added the `RebootRequired` property to flash results.
+
+## [1.0.8] - 2026-09-25
+
+### Added
+- Added the `-Details` parameter to `Get-DellBIOSUpdates`.
+- Added BIOS status properties for current/latest versions and release dates, update availability, current-state status, and `ReleasesSinceCurrent`.
+- `ReleasesSinceCurrent` counts distinct BIOS releases newer than the installed BIOS version.
+
 ## [1.0.7] - 2026-09-24
 
 ### Changed
