@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.11] - 2026-09-25
+
+### Removed
+- Removed `Invoke-DellIntuneAppPublishScript` from the module because Intune application publishing is outside OEMWrapPS's hardware-management scope.
+
 ## [1.0.10] - 2026-09-25
 
 ### Added

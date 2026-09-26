@@ -51,7 +51,6 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DellDeviceDetails` | Retrieves Dell device details (model, system ID) |
 | `Get-DellDeviceDriverPack` | Retrieves the driver pack for a Dell device |
 | `Get-DellBIOSUpdates` | Retrieves BIOS updates; `-Details` returns BIOS status, and `-Flash` installs the latest update with Dell DUP exit-code and log details |
-| `Invoke-DellIntuneAppPublishScript` | Invokes the Dell Intune app publish script |
 
 `Set-DCUSettings` supports hard-coded or scripted configuration for:
 
