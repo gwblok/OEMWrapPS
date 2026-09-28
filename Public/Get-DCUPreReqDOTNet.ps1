@@ -84,7 +84,7 @@ function Install-DCUPreReqDOTNet {
         [Parameter(Mandatory=$true)]
         [ValidatePattern('^\d+\.\d+$')]
         [string]$BaseVersion,
-        [string]$DownloadPath = "$env:TEMP\.NETInstallers"
+        [string]$DownloadPath = "$env:ProgramData\OEMWrapPS\.NETInstallers"
     )
 
     # Get the latest version

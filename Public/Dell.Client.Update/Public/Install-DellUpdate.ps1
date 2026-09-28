@@ -59,7 +59,7 @@ function Install-DellUpdate {
 
     .PARAMETER Path
         Optional payload download directory. When omitted, the reusable cache
-        at C:\ProgramData\DellPSUpdate\Downloads is used.
+        at C:\ProgramData\OEMWrapPS\Downloads is used.
 
     .EXAMPLE
         Get-DellUpdate | Install-DellUpdate

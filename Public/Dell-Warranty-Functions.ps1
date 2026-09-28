@@ -70,7 +70,7 @@ function Get-DellWarrantyInfo {
     function Install-CommandIntegrationSuite{
         [CmdletBinding()]
         param()
-        $ScratchDir = "$env:TEMP\Dell"
+        $ScratchDir = "$env:ProgramData\OEMWrapPS\Dell"
         if (-not (Test-Path $ScratchDir)) { New-Item -ItemType Directory -Path $ScratchDir |out-null }
         $DellWarrantyCLIPath = "C:\Program Files (x86)\Dell\CommandIntegrationSuite\DellWarranty-CLI.exe"
         $DCIS = Get-InstalledApps | Where-Object {$_.DisplayName -match "Integration Suite for System Center"}
@@ -104,9 +104,9 @@ function Get-DellWarrantyInfo {
     # Get the service tag
 
     #Create Export Path
-    $ExportPath = "$env:programdata\Dell\WarrantyExport.csv"
-    $RedirectPath = "$env:programdata\Dell\WarrantyExport.txt"
-    if (-not (Test-Path "$env:programdata\Dell")) { New-Item -ItemType Directory -Path "$env:programdata\Dell" |out-null }
+    $ExportPath = "$env:ProgramData\OEMWrapPS\Dell\WarrantyExport.csv"
+    $RedirectPath = "$env:ProgramData\OEMWrapPS\Dell\WarrantyExport.txt"
+    if (-not (Test-Path "$env:ProgramData\OEMWrapPS\Dell")) { New-Item -ItemType Directory -Path "$env:ProgramData\OEMWrapPS\Dell" -Force |out-null }
     write-verbose -Message "Export Path: $ExportPath"
     $DellWarrantyCLIPath = "C:\Program Files (x86)\Dell\CommandIntegrationSuite\DellWarranty-CLI.exe"
 
@@ -155,7 +155,7 @@ function Get-DellWarrantyInfo {
         }
     }
     Write-Verbose -Message "Service Tag: $ServiceTag"
-    $CSVPath = "$env:programdata\Dell\ServiceTag.csv"
+    $CSVPath = "$env:ProgramData\OEMWrapPS\Dell\ServiceTag.csv"
     
     if ($ServiceTag){
         $ServiceTag | Out-File -FilePath $CSVPath -Encoding utf8 -Force

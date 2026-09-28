@@ -62,8 +62,8 @@ ALL INFORMATION IS PUBLICLY AVAILABLE ON THE INTERNET. I JUST CONSOLIDATED IT IN
 function Get-DellSupportedModels {
     [CmdletBinding()]
     
-    $CabPathIndex = "$env:ProgramData\EMPS\DellCabDownloads\CatalogIndexPC.cab"
-    $DellCabExtractPath = "$env:ProgramData\EMPS\DellCabDownloads\DellCabExtract"
+    $CabPathIndex = "$env:ProgramData\OEMWrapPS\DellCabDownloads\CatalogIndexPC.cab"
+    $DellCabExtractPath = "$env:ProgramData\OEMWrapPS\DellCabDownloads\DellCabExtract"
     
     # Pull down Dell XML CAB used in Dell Command Update ,extract and Load
     if (!(Test-Path $DellCabExtractPath)){$null = New-Item -Path $DellCabExtractPath -ItemType Directory -Force}
@@ -97,8 +97,8 @@ function Get-DellSupportedModels {
 function Get-DellDriverPackXML {
     [CmdletBinding()]
     
-    $CabPathIndex = "$env:ProgramData\EMPS\DellCabDownloads\CatalogIndexPC.cab"
-    $DellCabExtractPath = "$env:ProgramData\EMPS\DellCabDownloads\DellCabExtract"
+    $CabPathIndex = "$env:ProgramData\OEMWrapPS\DellCabDownloads\CatalogIndexPC.cab"
+    $DellCabExtractPath = "$env:ProgramData\OEMWrapPS\DellCabDownloads\DellCabExtract"
     
     # Pull down Dell XML CAB used in Dell Command Update ,extract and Load
     if (!(Test-Path $DellCabExtractPath)){$null = New-Item -Path $DellCabExtractPath -ItemType Directory -Force}
@@ -259,7 +259,7 @@ Function Get-DCUAppUpdates {
         [switch]$AutoInstallPreReqs,
         [switch]$UseWebRequest,
         [switch]$CheckPreReqs,
-        [string]$DownloadPath = "$env:ProgramData\EMPS\DellCabDownloads"
+        [string]$DownloadPath = "$env:ProgramData\OEMWrapPS\DellCabDownloads"
     )
     
     $DownloadPathSpecified = $PSBoundParameters.ContainsKey('DownloadPath')
@@ -268,7 +268,7 @@ Function Get-DCUAppUpdates {
         if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems"}
         $SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
     }
-    $temproot = "$env:windir\temp"
+    $temproot = "$env:ProgramData\OEMWrapPS"
     $DellCabExtractPath = "$temproot\DellCabDownloads\DellCabExtract"
     
     $Apps = Get-DCUUpdateList -SystemSKUNumber $SystemSKUNumber -updateType application | Select-Object -Property PackageID, Name, ReleaseDate, DellVersion, VendorVersion, Path
@@ -406,9 +406,29 @@ Function Get-DCUAppUpdates {
                         }
                         Write-Output 'Verified Dell UpdateScheduler\IgnoreOOBE is DWORD 1.'
                     }
+
+                    # Dell DUP: 0 = success, 2 = success/reboot required. Everything else failed to install.
+                    $FinalExitInfo = Get-DUPExitInfo -DUPExit $Process.ExitCode | Select-Object -First 1
+                    $FinalCodeName = if ($FinalExitInfo) { $FinalExitInfo.DisplayName } else { 'Unknown' }
+                    $FinalDescription = if ($FinalExitInfo) { $FinalExitInfo.Description } else { 'No matching DUP exit code information was found.' }
+                    $InstallSucceeded = $Process.ExitCode -in @(0, 2)
+
+                    if (-not $InstallSucceeded){
+                        throw "Dell Command Update $DCUVersion install failed with exit code $($Process.ExitCode) ($FinalCodeName - $FinalDescription). Log: $LogFileName"
+                    }
+
+                    return [PSCustomObject]@{
+                        Version        = $DCUVersion
+                        ExitCode       = $Process.ExitCode
+                        CodeName       = $FinalCodeName
+                        Description    = $FinalDescription
+                        LogPath        = $LogFileName
+                        Success        = $true
+                        RebootRequired = ($Process.ExitCode -eq 2)
+                    }
                 }
                 else{
-                    Write-Verbose " FAILED TO DOWNLOAD DCU"
+                    throw "Failed to download Dell Command Update from $TargetLink"
                 }
             }
             else{
@@ -501,7 +521,8 @@ function Set-DCUSettings {
     
     $DCUPath = (Get-DCUInstallDetails).DCUPath
     Write-Verbose "DCU Path: $DCUPath"
-    $LogPath = "$env:SystemDrive\Users\Dell\EMPS\Logs"
+    $LogPath = "$env:ProgramData\OEMWrapPS\Logs"
+    if (!(Test-Path $LogPath)){$null = New-Item -Path $LogPath -ItemType Directory -Force}
     Write-Verbose "Log Path: $LogPath"
     $DateTimeStamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
@@ -755,7 +776,8 @@ function Invoke-DCU {
     [switch]$applyUpdates
     )
     $DCUPath = (Get-DCUInstallDetails).DCUPath
-    $LogPath = "$env:SystemDrive\Users\Dell\EMPS\Logs"
+    $LogPath = "$env:ProgramData\OEMWrapPS\Logs"
+    if (!(Test-Path $LogPath)){$null = New-Item -Path $LogPath -ItemType Directory -Force}
     #Build Argument Strings for each parameter
     if ($updateSeverity){
         [String]$updateSeverity = $($updateSeverity -join ",").ToString()
@@ -814,7 +836,7 @@ function Get-DCUUpdateList {
     )
 
     
-    $temproot = "$env:windir\temp"
+    $temproot = "$env:ProgramData\OEMWrapPS"
     #$SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
     $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
     $CabPathIndexModel = "$temproot\DellCabDownloads\CatalogIndexModel.cab"
@@ -1128,7 +1150,9 @@ Function Get-DellBIOSUpdates {
         $Update = $Updates | Select-Object -First 1
         $UpdatePath = $Update.Path
         $UpdateFileName = $UpdatePath -split "/" | Select-Object -Last 1
-        $UpdateLocalPath = "$env:windir\temp\$UpdateFileName"
+        $UpdateDownloadFolder = "$env:ProgramData\OEMWrapPS\DellBIOSUpdates"
+        if (!(Test-Path $UpdateDownloadFolder)){$null = New-Item -Path $UpdateDownloadFolder -ItemType Directory -Force}
+        $UpdateLocalPath = "$UpdateDownloadFolder\$UpdateFileName"
         Start-BitsTransfer -DisplayName $UpdateFileName -Source $UpdatePath -Destination $UpdateLocalPath -Description "Downloading $UpdateFileName" -RetryInterval 60 #-CustomHeaders "User-Agent:Bob" 
         if (Test-Path -Path $UpdateLocalPath){
             Write-Host "Installing $UpdateFileName, logfile: $($UpdateLocalPath).log"

@@ -7,8 +7,10 @@ Functions for HP Image Assistant (HPIA) platform support, OS support queries, So
 
 function Test-HPIASupport ([string]$PlatformID){
 
-    $CabPath = "$env:TEMP\platformList.cab"
-    $XMLPath = "$env:TEMP\platformList.xml"
+    $WorkingPath = "$env:ProgramData\OEMWrapPS\HP"
+    if (!(Test-Path $WorkingPath)){$null = New-Item -Path $WorkingPath -ItemType Directory -Force}
+    $CabPath = "$WorkingPath\platformList.cab"
+    $XMLPath = "$WorkingPath\platformList.xml"
     $PlatformListCabURL = "https://hpia.hpcloud.hp.com/ref/platformList.cab"
     if (!(Test-Path $CabPath)){
         Invoke-WebRequest -Uri $PlatformListCabURL -OutFile $CabPath -UseBasicParsing
@@ -40,8 +42,10 @@ function Get-HPOSSupport {
     [switch]$MaxOSVer,
     [switch]$MaxOSNum
     )
-    $CabPath = "$env:TEMP\platformList.cab"
-    $XMLPath = "$env:TEMP\platformList.xml"
+    $WorkingPath = "$env:ProgramData\OEMWrapPS\HP"
+    if (!(Test-Path $WorkingPath)){$null = New-Item -Path $WorkingPath -ItemType Directory -Force}
+    $CabPath = "$WorkingPath\platformList.cab"
+    $XMLPath = "$WorkingPath\platformList.xml"
     if ($Platform){$MachinePlatform = $platform}
     else {$MachinePlatform = (Get-CimInstance -Namespace root/cimv2 -ClassName Win32_BaseBoard).Product}
     $PlatformListCabURL = "https://hpia.hpcloud.hp.com/ref/platformList.cab"
@@ -99,8 +103,10 @@ function Get-HPSoftpaqListLatest {
     $ReleaseID = Get-HPOSSupport -MaxOSVer -Platform $MachinePlatform
     $BaseURL = ("https://hpia.hpcloud.hp.com/ref/$($MachinePlatform)/$($MachinePlatform)_$($Arch)_$($OSNum).$($ReleaseID).cab").ToLower()
     #https://hpia.hpcloud.hp.com/ref/83b2/83b2_64_11.0.23h2.cab
-    $CabPath = "$env:TEMP\HPIA.cab"
-    $XMLPath = "$env:TEMP\HPIA.xml"
+    $WorkingPath = "$env:ProgramData\OEMWrapPS\HP"
+    if (!(Test-Path $WorkingPath)){$null = New-Item -Path $WorkingPath -ItemType Directory -Force}
+    $CabPath = "$WorkingPath\HPIA.cab"
+    $XMLPath = "$WorkingPath\HPIA.xml"
     Write-Verbose "Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing"
     Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing -ErrorAction SilentlyContinue
     $Expand = expand $CabPath $XMLPath
@@ -130,8 +136,10 @@ function Get-HPSoftPaqItems {
     
     
     if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64"){$Arch = '64'}
-    $CabPath = "$env:TEMP\HPIA.cab"
-    $XMLPath = "$env:TEMP\HPIA.xml"
+    $WorkingPath = "$env:ProgramData\OEMWrapPS\HP"
+    if (!(Test-Path $WorkingPath)){$null = New-Item -Path $WorkingPath -ItemType Directory -Force}
+    $CabPath = "$WorkingPath\HPIA.cab"
+    $XMLPath = "$WorkingPath\HPIA.xml"
     if ($Platform){$MachinePlatform = $platform}
     else {$MachinePlatform = (Get-CimInstance -Namespace root/cimv2 -ClassName Win32_BaseBoard).Product}
     
@@ -263,7 +271,7 @@ function Invoke-HPIAOfflineSync {
     )
     
     #Create HPIA Repo & Sync for this Platform (EXE / Online)
-    $LogFolder = "C:\OSDCloud\Logs"
+    $LogFolder = "$env:ProgramData\OEMWrapPS\Logs"
     $HPIARepoFolder = "C:\OSDCloud\HPIA\Repo"
     $PlatformCode = (Get-CimInstance -Namespace root/cimv2 -ClassName Win32_BaseBoard).Product
     New-Item -Path $LogFolder -ItemType Directory -Force | Out-Null

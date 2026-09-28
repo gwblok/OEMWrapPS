@@ -5,7 +5,7 @@ function Get-DellUpdateHist {
 
     .DESCRIPTION
         Reads installation session records created by Install-DellUpdate under
-        C:\ProgramData\DellPSUpdate\History and returns them newest first.
+        C:\ProgramData\OEMWrapPS\History and returns them newest first.
 
     .PARAMETER Status
         Return only Success or Failed records.
@@ -30,7 +30,7 @@ function Get-DellUpdateHist {
         Get-DellUpdateHist -Type BIOS -Last 10
 
     .NOTES
-        History is read from C:\ProgramData\DellPSUpdate\History. Files are
+        History is read from C:\ProgramData\OEMWrapPS\History. Files are
         retained until an administrator removes them. Invalid files or records
         generate warnings and do not prevent valid history from being returned.
     #>

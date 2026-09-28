@@ -21,7 +21,7 @@ function Get-DellUpdate {
 
     .PARAMETER WorkingDirectory
         Directory for catalog downloads and extracted XML. Defaults to
-        C:\ProgramData\DellPSUpdate\Catalogs.
+        C:\ProgramData\OEMWrapPS\Catalogs.
 
     .PARAMETER CatalogUrl
         Dell model catalog index CAB URL.
@@ -45,8 +45,8 @@ function Get-DellUpdate {
     .NOTES
         This command has no Dell Command Update or OpenManage dependency.
         Downloaded CAB files are stored under
-        C:\ProgramData\DellPSUpdate\Downloads. Extracted catalogs are stored
-        under C:\ProgramData\DellPSUpdate\Catalogs by default. Use
+        C:\ProgramData\OEMWrapPS\Downloads. Extracted catalogs are stored
+        under C:\ProgramData\OEMWrapPS\Catalogs by default. Use
         -UseCachedCatalog to avoid refreshing the model catalog.
     #>
     [CmdletBinding()]
@@ -60,7 +60,7 @@ function Get-DellUpdate {
         [ValidateRange(1, 45)]
         [int]$DelayDays,
         [uri]$CatalogUrl = 'https://downloads.dell.com/catalog/CatalogIndexPC.cab',
-        [string]$WorkingDirectory = (Join-Path $env:ProgramData 'DellPSUpdate\Catalogs')
+        [string]$WorkingDirectory = (Join-Path $env:ProgramData 'OEMWrapPS\Catalogs')
     )
 
     if ($NoTestInstalled -and -not $All) {

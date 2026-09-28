@@ -5,7 +5,7 @@ function Get-DellPSUpdatePath {
         [switch]$Create
     )
 
-    $rootPath = Join-Path $env:ProgramData 'DellPSUpdate'
+    $rootPath = Join-Path $env:ProgramData 'OEMWrapPS'
     $path = if ($Name -eq 'Root') {
         $rootPath
     }
