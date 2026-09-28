@@ -4,7 +4,7 @@ PowerShell module wrapping OEM hardware management functions for Dell and HP dev
 
 ## Overview
 
-OEMWrapPS consolidates commonly used OEM hardware management functions into a single PowerShell module. It includes functions for Dell BIOS management, Dell Command Update (DCU), Dell warranty retrieval, and HP Image Assistant (HPIA) platform support.
+OEMWrapPS consolidates commonly used OEM hardware management functions into a single PowerShell module. It includes functions for Dell BIOS management, Dell Command Update (DCU), native Dell model-catalog update scanning and installation, Dell warranty retrieval, and HP Image Assistant (HPIA) platform support.
 
 ## Installation
 
@@ -53,6 +53,18 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DellBIOSUpdates` | Retrieves BIOS updates available for the device |
 | `Invoke-DellIntuneAppPublishScript` | Invokes the Dell Intune app publish script |
 
+### Dell – Client Updates (model catalog)
+
+These commands evaluate Dell's model-specific update catalog against Windows device and driver inventory. They do not require Dell Command Update for scanning; installation requires an elevated session. Payloads are verified against the catalog SHA-256 digest and Dell Authenticode signature before installation.
+
+Source: [Public/Dell.Client.Update](Public/Dell.Client.Update)
+
+| Function | Description |
+|---|---|
+| `Get-DellUpdate` | Finds the newest applicable catalog package for each detected component; supports installed-state checks and Dell Command Update policy filters |
+| `Install-DellUpdate` | Downloads, validates, and installs selected update objects; supports WhatIf, logging, registry/WMI reporting, and JSON history |
+| `Get-DellUpdateHist` | Reads and filters local Dell update installation history |
+
 ### Dell – DCU Prerequisites
 
 Source: [Public/Get-DCUPreReqDOTNet.ps1](https://github.com/gwblok/OEMWrapPS/blob/main/Public/Get-DCUPreReqDOTNet.ps1)
@@ -89,6 +101,7 @@ Source: [Public/HP-HPIA-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/
 - PowerShell 5.1 or higher
 - For Dell BIOS functions: Dell device with WMI BIOS support (manufactured 2018 or newer), administrative privileges
 - For Dell DCU functions: Dell Command Update installed
+- For Dell Client Update functions: Windows on a Dell device for catalog scanning; elevated PowerShell for installation
 - For Dell Warranty functions: Dell Command Integration Suite (auto-downloaded if not present)
 - For HP HPIA functions: HP device; HP Client Management Script Library (HPCMSL) for `Invoke-HPIAOfflineSync`
 

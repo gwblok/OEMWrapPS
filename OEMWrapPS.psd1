@@ -12,7 +12,7 @@
 RootModule = 'OEMWrapPS.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.6'
+ModuleVersion = '1.1.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -30,7 +30,7 @@ CompanyName = 'GARYTOWN.COM'
 Copyright = '(c) Gary Blok (@gwblok). All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'PowerShell module wrapping OEM hardware management functions for Dell and HP devices. Includes Dell BIOS WMI management, Dell Command Update (DCU), Dell Warranty retrieval, and HP Image Assistant (HPIA) support functions.'
+Description = 'PowerShell module wrapping OEM hardware management functions for Dell and HP devices. Includes Dell BIOS WMI management, Dell Command Update (DCU), native Dell model-catalog update scanning and installation, Dell Warranty retrieval, and HP Image Assistant (HPIA) support functions.'
 
 # Minimum version of the PowerShell engine required by this module
 PowerShellVersion = '5.1'
@@ -81,7 +81,8 @@ FunctionsToExport = 'Get-DCUAppUpdates', 'Get-DCUExitInfo', 'Get-DCUInstallDetai
                'Set-DellBIOSAdminPassword', 'Set-DellBIOSSetting', 
                'Test-DellBIOSPassword', 'Test-DellBIOSWMISupport', 
                'Test-HPIASupport', 'Test-UrlExists', 'Get-LatestDotNetVersion',
-               'Install-DCUPreReqDOTNet'
+               'Install-DCUPreReqDOTNet', 'Get-DellUpdate', 'Get-DellUpdateHist',
+               'Install-DellUpdate'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()

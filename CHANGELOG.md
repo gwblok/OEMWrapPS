@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.0] - 2026-09-27
+
+### Added
+- Merged the `Get-DellUpdate`, `Install-DellUpdate`, and `Get-DellUpdateHist` commands and their private helpers from Dell.Client.Update.
+- Added native Dell model-catalog scanning, update package verification and installation, and local installation history support.
+- Exported the three Dell Client Update commands from OEMWrapPS and documented their requirements and behavior.
+
 ## [1.0.6] - 2026-09-08
 
 ### Changed

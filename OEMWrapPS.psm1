@@ -6,8 +6,8 @@
 .DESCRIPTION
     OEMWrapPS is a PowerShell module that wraps OEM-specific hardware management functions
     for Dell and HP devices. It includes functions for Dell BIOS management via WMI,
-    Dell Command Update (DCU) management, Dell warranty retrieval, and HP Image Assistant
-    (HPIA) platform support.
+    Dell Command Update (DCU) management, Dell model-catalog update scanning and
+    installation, Dell warranty retrieval, and HP Image Assistant (HPIA) support.
 
     Sources:
     - Dell BIOS Functions: https://github.com/gwblok/2PintLabs/blob/main/DeployR/BIOSSettings/Dell/NativeWMI/SetDellBIOSSettingsWMI-Functions.ps1
