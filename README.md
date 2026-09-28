@@ -62,14 +62,22 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 - Update type filters such as BIOS, firmware, driver, application, utility, and others.
 
 `Get-DCUAppUpdates -Install` installs the latest catalog-listed Dell Command
-Update package when it is newer than the installed version. For DCU 5.7.1 and
-later, the installer is invoked with Dell's `IGNOREOOBE="1"` property so it can
-run while Windows OOBE is active. After a successful install (including an
-automatic prerequisite retry), the function confirms that
-`HKLM\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler\IgnoreOOBE` exists as
-a DWORD with value `1`, creating or correcting it if needed. Dell documents
-this behavior in [How to Allow Dell Command Update to Run During the Windows
-Out-of-Box Experience](https://www.dell.com/support/kbdoc/en-us/000497911/how-to-allow-dell-command-update-to-run-during-the-windows-out-of-box-experience?lang=en).
+Update package when it is newer than the installed version. The Dell Update
+Package is run with `/s /l="<log>"`; the `IGNOREOOBE` property is not passed on
+the command line because the Dell Update Package wrapper does not accept it.
+For DCU 5.7.1 and later, after a successful install (including an automatic
+prerequisite retry) the function sets and verifies
+`HKLM\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler\IgnoreOOBE` as a
+DWORD with value `1`, which is what allows Dell Command Update to run while
+Windows OOBE is active. Dell documents this registry method in [How to Allow
+Dell Command Update to Run During the Windows Out-of-Box
+Experience](https://www.dell.com/support/kbdoc/en-us/000497911/how-to-allow-dell-command-update-to-run-during-the-windows-out-of-box-experience?lang=en).
+
+On success, `Get-DCUAppUpdates -Install` returns an object containing `Version`,
+`ExitCode`, `CodeName`, `Description`, `LogPath`, `Success`, and
+`RebootRequired`. Dell DUP exit codes `0` and `2` are treated as success, where
+`2` means a reboot is required. Any other exit code throws a terminating error
+so calling scripts and task sequences fail instead of reporting success.
 
 Use `Get-DellBIOSUpdates -Details` to return a status object with:
 
@@ -136,6 +144,21 @@ Source: [Public/HP-HPIA-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/
 | `Get-HPSoftPaqItems` | Retrieves SoftPaq items for a specific HP platform and OS version |
 | `Get-HPDriverPackLatest` | Returns the latest driver pack available for an HP platform |
 | `Invoke-HPIAOfflineSync` | Creates and syncs an offline HPIA repository for a platform |
+
+## File Locations
+
+All downloads, working files, and logs are written under
+`C:\ProgramData\OEMWrapPS`:
+
+| Path | Contents |
+| --- | --- |
+| `DellCabDownloads` | Dell catalog cab downloads and extracted catalog XML |
+| `DellBIOSUpdates` | Dell BIOS update packages downloaded by `Get-DellBIOSUpdates -Flash` |
+| `Dell` | Dell warranty export and service tag files |
+| `.NETInstallers` | .NET Desktop Runtime prerequisite installers |
+| `HP` | HP platform list and HPIA catalog cab/XML files |
+| `Catalogs`, `Downloads`, `History` | Dell client update catalogs, payloads, and installation history |
+| `Logs` | Dell Command Update CLI logs, Dell update install logs, and HPIA offline sync logs |
 
 ## Requirements
 

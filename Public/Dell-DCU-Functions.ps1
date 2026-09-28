@@ -303,14 +303,8 @@ Function Get-DCUAppUpdates {
                 #Confirm Download
                 if (Test-Path $TargetFilePathName){
                     $LogFileName = ($TargetFilePathName.replace(".exe",".log")).Replace(".EXE",".log")
-                    if ($DCUVersion -ge [version]'5.7.1') {
-                        $Arguments = "/s /l=`"$LogFileName`" /v`"IGNOREOOBE=`"1`" /qn`""
-                        Write-Output "DCU $DCUVersion supports OOBE deployment; enabling IgnoreOOBE."
-                    }
-                    else {
-                        $Arguments = "/s /l=`"$LogFileName`""
-                        Write-Verbose "DCU $DCUVersion predates 5.7.1; installing without the IgnoreOOBE property."
-                    }
+                    # The Dell Update Package wrapper only accepts /s, /l=, /e=, /f, /passthrough and /bls. IgnoreOOBE is applied via the registry after install.
+                    $Arguments = "/s /l=`"$LogFileName`""
                     Write-Output "Starting DCU Install"
                     Write-Verbose "DCU installer arguments: $Arguments"
                     write-output "Log file = $LogFileName"
@@ -373,6 +367,7 @@ Function Get-DCUAppUpdates {
                         Write-Verbose "Reboot Required"
                     }
                     if ($DCUVersion -ge [version]'5.7.1' -and $Process -and $Process.ExitCode -in @(0, 2)) {
+                        Write-Output "DCU $DCUVersion supports OOBE deployment; configuring the IgnoreOOBE registry value."
                         $IgnoreOOBEKey = 'HKLM:\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler'
                         $IgnoreOOBEValue = $null
                         $IgnoreOOBEKind = $null

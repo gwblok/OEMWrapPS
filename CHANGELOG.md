@@ -2,6 +2,38 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.2] - 2026-09-28
+
+### Fixed
+
+- Removed the `IGNOREOOBE="1"` property from the Dell Command Update installer command line in `Get-DCUAppUpdates -Install`. The Dell Update Package wrapper only accepts `/s`, `/l=`, `/e=`, `/f`, `/passthrough`, and `/bls`, so the extra `/v` argument caused the package to display its usage text and return a failure exit code instead of installing.
+- The installer now runs with `/s /l="<log>"`, and OOBE support is applied only through the `IgnoreOOBE` registry value after a successful install of Dell Command Update 5.7.1 or later.
+
+### References
+
+- [How to Allow Dell Command Update to Run During the Windows Out-of-Box Experience](https://www.dell.com/support/kbdoc/en-us/000497911/how-to-allow-dell-command-update-to-run-during-the-windows-out-of-box-experience?lang=en)
+
+## [1.1.1] - 2026-09-28
+
+### Fixed
+
+- `Get-DCUAppUpdates -Install` now throws when the Dell Command Update installer returns a failure exit code. Previously a failed install (for example Dell DUP exit code 10) was only written to the console, so calling scripts and task sequences reported success.
+- Dell DUP exit codes `0` and `2` are treated as success; exit code `2` reports that a reboot is required.
+- A failed Dell Command Update download now throws instead of continuing silently.
+
+### Added
+
+- `Get-DCUAppUpdates -Install` returns an install result object with `Version`, `ExitCode`, `CodeName`, `Description`, `LogPath`, `Success`, and `RebootRequired`.
+
+### Changed
+
+- All module working files, downloads, and logs are now written under `C:\ProgramData\OEMWrapPS`, replacing the previous `ProgramData\EMPS`, `C:\Users\Dell\EMPS\Logs`, `%windir%\temp`, `%TEMP%`, and `C:\OSDCloud\Logs` locations.
+- Dell catalog and cab downloads use `C:\ProgramData\OEMWrapPS\DellCabDownloads`; Dell BIOS update downloads use `C:\ProgramData\OEMWrapPS\DellBIOSUpdates`.
+- Dell Command Update CLI logs are written to `C:\ProgramData\OEMWrapPS\Logs`, and the log directory is created when missing.
+- Dell warranty export files use `C:\ProgramData\OEMWrapPS\Dell`, and .NET prerequisite installers use `C:\ProgramData\OEMWrapPS\.NETInstallers`.
+- HP platform and HPIA catalog files use `C:\ProgramData\OEMWrapPS\HP`, and the HPIA offline sync log is written to `C:\ProgramData\OEMWrapPS\Logs`.
+- `Get-DellUpdate`, `Install-DellUpdate`, and `Get-DellUpdateHist` store catalogs, downloads, history, and logs under `C:\ProgramData\OEMWrapPS`.
+
 ## [1.1.0] - 2026-09-27
 
 ### Added
