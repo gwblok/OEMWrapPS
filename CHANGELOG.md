@@ -9,6 +9,53 @@ All notable changes to this project are documented in this file.
 - Added native Dell model-catalog scanning, update package verification and installation, and local installation history support.
 - Exported the three Dell Client Update commands from OEMWrapPS and documented their requirements and behavior.
 
+## [1.0.12] - 2026-09-26
+
+### Added
+
+- Updated `Get-DCUAppUpdates -Install` to pass Dell's `IGNOREOOBE="1"` installer property when installing Dell Command Update 5.7.1 or later.
+- After a successful DCU 5.7.1+ installation, verify `HKLM\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler\IgnoreOOBE` is a DWORD set to `1`; create or correct it when needed.
+- Re-verify the OOBE registry setting after a successful prerequisite-triggered installer retry.
+
+### References
+
+- [How to Allow Dell Command Update to Run During the Windows Out-of-Box Experience](https://www.dell.com/support/kbdoc/en-us/000497911/how-to-allow-dell-command-update-to-run-during-the-windows-out-of-box-experience?lang=en)
+
+
+## [1.0.11] - 2026-09-25
+
+### Removed
+- Removed `Invoke-DellIntuneAppPublishScript` from the module because Intune application publishing is outside OEMWrapPS's hardware-management scope.
+
+## [1.0.10] - 2026-09-25
+
+### Added
+- Extended `Set-DCUSettings` with schedule frequency and time configuration.
+- Added delay-days configuration for excluding recently released updates.
+- Added device category, severity, and update type filter configuration.
+- Added support for scripted configuration of the expanded DCU settings surface.
+
+## [1.0.9] - 2026-09-25
+
+### Changed
+- Updated `Get-DellBIOSUpdates -Flash` so Dell DUP exit code 2 is reported as a successful update with reboot required.
+- Added the `RebootRequired` property to flash results.
+
+## [1.0.8] - 2026-09-25
+
+### Added
+- Added the `-Details` parameter to `Get-DellBIOSUpdates`.
+- Added BIOS status properties for current/latest versions and release dates, update availability, current-state status, and `ReleasesSinceCurrent`.
+- `ReleasesSinceCurrent` counts distinct BIOS releases newer than the installed BIOS version.
+
+## [1.0.7] - 2026-09-24
+
+### Changed
+- Updated `Get-DellBIOSUpdates -Flash` to decode Dell DUP BIOS exit codes for successful, reboot-required, dependency, password, downgrade, RPM verification, and unspecified hardware/EC errors.
+- Added parsing of the Dell BIOS installer log so `Error:` text is returned as the result description and `Exit Code =` text is returned as the code name.
+- `Get-DellBIOSUpdates -Flash` now returns structured flash results including the update name, numeric exit code, code name, description, log path, and success status.
+- Corrected the documented mappings for Dell DUP exit codes 8, 9, and 10.
+
 ## [1.0.6] - 2026-09-08
 
 ### Changed

@@ -44,14 +44,55 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DCUExitInfo` | Provides descriptions for DCU exit codes |
 | `Get-DUPExitInfo` | Provides descriptions for Dell Update Package exit codes |
 | `Get-DCUAppUpdates` | Retrieves available app updates from DCU |
-| `Set-DCUSettings` | Configures DCU settings via dcu-cli.exe |
+| `Set-DCUSettings` | Configures DCU settings via dcu-cli.exe, including schedules, deferrals, delay days, and update filters |
 | `Get-DCUSettings` | Lists current DCU settings from the registry |
 | `Invoke-DCU` | Invokes DCU actions (scan, apply updates, etc.) |
 | `Get-DCUUpdateList` | Retrieves the list of available updates from DCU |
 | `Get-DellDeviceDetails` | Retrieves Dell device details (model, system ID) |
 | `Get-DellDeviceDriverPack` | Retrieves the driver pack for a Dell device |
-| `Get-DellBIOSUpdates` | Retrieves BIOS updates available for the device |
-| `Invoke-DellIntuneAppPublishScript` | Invokes the Dell Intune app publish script |
+| `Get-DellBIOSUpdates` | Retrieves BIOS updates; `-Details` returns BIOS status, and `-Flash` installs the latest update with Dell DUP exit-code and log details |
+
+`Set-DCUSettings` supports hard-coded or scripted configuration for:
+
+- Installation and restart deferrals.
+- Schedule mode, daily time, weekly day/time, and monthly week/day/time.
+- Delay days for excluding recently released updates.
+- Device category filters such as audio, video, network, chipset, storage, input, and others.
+- Severity filters such as security, critical, recommended, and optional.
+- Update type filters such as BIOS, firmware, driver, application, utility, and others.
+
+`Get-DCUAppUpdates -Install` installs the latest catalog-listed Dell Command
+Update package when it is newer than the installed version. For DCU 5.7.1 and
+later, the installer is invoked with Dell's `IGNOREOOBE="1"` property so it can
+run while Windows OOBE is active. After a successful install (including an
+automatic prerequisite retry), the function confirms that
+`HKLM\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler\IgnoreOOBE` exists as
+a DWORD with value `1`, creating or correcting it if needed. Dell documents
+this behavior in [How to Allow Dell Command Update to Run During the Windows
+Out-of-Box Experience](https://www.dell.com/support/kbdoc/en-us/000497911/how-to-allow-dell-command-update-to-run-during-the-windows-out-of-box-experience?lang=en).
+
+Use `Get-DellBIOSUpdates -Details` to return a status object with:
+
+- `CurrentBIOSVersion` and `CurrentBIOSReleaseDate`
+- `LatestBIOSVersion` and `LatestBIOSReleaseDate`
+- `UpdateAvailable`
+- `BIOSIsCurrent`
+- `ReleasesSinceCurrent`, the count of distinct BIOS releases newer than the installed version
+
+For example, a system running BIOS 1.37 with BIOS 1.38 available returns
+`ReleasesSinceCurrent` as `1`.
+
+#### BIOS Flash Results
+
+Use `Get-DellBIOSUpdates -Flash` to download and silently run the latest Dell
+BIOS update. The function returns an object containing `ExitCode`, `CodeName`,
+`Description`, `LogPath`, `Success`, and `RebootRequired`. Dell DUP exit code 2
+is treated as a successful update that requires a reboot. The description and code name are
+updated from the Dell installer log when it contains `Error:` or `Exit Code =`
+entries; otherwise, the documented Dell DUP exit-code information is used.
+
+Dell's BIOS DUP exit codes are documented in [Using DUP BIOS Updates With
+Administrator Options](https://www.dell.com/support/kbdoc/en-us/000148745/dup-bios-updates).
 
 ### Dell – Client Updates (model catalog)
 
@@ -104,6 +145,7 @@ Source: [Public/HP-HPIA-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/
 - For Dell Client Update functions: Windows on a Dell device for catalog scanning; elevated PowerShell for installation
 - For Dell Warranty functions: Dell Command Integration Suite (auto-downloaded if not present)
 - For HP HPIA functions: HP device; HP Client Management Script Library (HPCMSL) for `Invoke-HPIAOfflineSync`
+- BIOS flashing may require administrative privileges, BitLocker suspension, a charged battery, and a restart.
 
 ## Changelog
 

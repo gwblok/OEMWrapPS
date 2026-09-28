@@ -242,9 +242,9 @@ Function Get-DUPExitInfo {
         @{ExitCode = 5; DisplayName = "Qualification error"; Description = "A QUAL_HARD_ERROR cannot be suppressed by using the /f switch."}
         @{ExitCode = 6; DisplayName = "Rebooting computer"; Description = "The computer is being rebooted."}
         @{ExitCode = 7; DisplayName = "Password validation error"; Description = "Password not provided or incorrect password provided for BIOS execution"}
-        @{ExitCode = 8; DisplayName = "Requested Downgrade is not allowed."; Description = "Downgrading the BIOS to the version run is not allowed."}
-        @{ExitCode = 8; DisplayName = "RPM verification has failed"; Description = "The Linux DUP framework uses RPM verification to ensure the security of all DUP-dependent Linux utilities. If security is compromised, the framework displays a message and an RPM Verify Legend, and then exits with exit code 9."}
-        @{ExitCode = 8; DisplayName = "Some other error"; Description = "This exit code is for all errors that have not been specified in BIOS exit codes 0-9. That is, battery error, EC error, HW failure, so forth."}
+        @{ExitCode = 8; DisplayName = "Requested downgrade is not allowed"; Description = "Downgrading the BIOS to the requested version is not allowed."}
+        @{ExitCode = 9; DisplayName = "RPM verification failed"; Description = "The Linux DUP framework failed RPM verification. The update was not successful."}
+        @{ExitCode = 10; DisplayName = "EC unspecified error"; Description = "An unspecified error occurred, such as a battery error, embedded-controller error, or hardware failure."}
         )
     $DUPExitInfo | Where-Object {$_.ExitCode -eq $DUPExit}
 }
@@ -303,8 +303,16 @@ Function Get-DCUAppUpdates {
                 #Confirm Download
                 if (Test-Path $TargetFilePathName){
                     $LogFileName = ($TargetFilePathName.replace(".exe",".log")).Replace(".EXE",".log")
-                    $Arguments = "/s /l=$LogFileName"
+                    if ($DCUVersion -ge [version]'5.7.1') {
+                        $Arguments = "/s /l=`"$LogFileName`" /v`"IGNOREOOBE=`"1`" /qn`""
+                        Write-Output "DCU $DCUVersion supports OOBE deployment; enabling IgnoreOOBE."
+                    }
+                    else {
+                        $Arguments = "/s /l=`"$LogFileName`""
+                        Write-Verbose "DCU $DCUVersion predates 5.7.1; installing without the IgnoreOOBE property."
+                    }
                     Write-Output "Starting DCU Install"
+                    Write-Verbose "DCU installer arguments: $Arguments"
                     write-output "Log file = $LogFileName"
                     $Process = Start-Process "$TargetFilePathName" $Arguments -Wait -PassThru
                     write-output "Update Complete with Exitcode: $($Process.ExitCode)"
@@ -363,6 +371,40 @@ Function Get-DCUAppUpdates {
                     }
                     If($Process -ne $null -and $Process.ExitCode -eq '2'){
                         Write-Verbose "Reboot Required"
+                    }
+                    if ($DCUVersion -ge [version]'5.7.1' -and $Process -and $Process.ExitCode -in @(0, 2)) {
+                        $IgnoreOOBEKey = 'HKLM:\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler'
+                        $IgnoreOOBEValue = $null
+                        $IgnoreOOBEKind = $null
+
+                        if (Test-Path -LiteralPath $IgnoreOOBEKey) {
+                            $IgnoreOOBEValue = Get-ItemPropertyValue -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -ErrorAction SilentlyContinue
+                            try {
+                                $IgnoreOOBEKind = (Get-Item -LiteralPath $IgnoreOOBEKey).GetValueKind('IgnoreOOBE')
+                            }
+                            catch {
+                                $IgnoreOOBEKind = $null
+                            }
+                        }
+
+                        if ($IgnoreOOBEValue -ne 1 -or $IgnoreOOBEKind -ne [Microsoft.Win32.RegistryValueKind]::DWord) {
+                            Write-Output 'Setting Dell UpdateScheduler\IgnoreOOBE to DWORD 1.'
+                            $null = New-Item -Path $IgnoreOOBEKey -Force -ErrorAction Stop
+                            if ($null -ne $IgnoreOOBEKind) {
+                                Remove-ItemProperty -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -Force -ErrorAction SilentlyContinue
+                            }
+                            $null = New-ItemProperty -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -Value 1 -PropertyType DWord -Force -ErrorAction Stop
+                        }
+                        else {
+                            Write-Output 'Dell UpdateScheduler\IgnoreOOBE is already set to DWORD 1.'
+                        }
+
+                        $VerifiedIgnoreOOBEValue = Get-ItemPropertyValue -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -ErrorAction Stop
+                        $VerifiedIgnoreOOBEKind = (Get-Item -LiteralPath $IgnoreOOBEKey).GetValueKind('IgnoreOOBE')
+                        if ($VerifiedIgnoreOOBEValue -ne 1 -or $VerifiedIgnoreOOBEKind -ne [Microsoft.Win32.RegistryValueKind]::DWord) {
+                            throw 'Dell UpdateScheduler\IgnoreOOBE registry verification failed.'
+                        }
+                        Write-Output 'Verified Dell UpdateScheduler\IgnoreOOBE is DWORD 1.'
                     }
                 }
                 else{
@@ -440,7 +482,21 @@ function Set-DCUSettings {
     [switch]$scheduleAuto,
     [string]$CustomCatalogPath, #Path to a custom catalog file for Offline DCU or just to lock in a specific catalog
     [ValidateRange(1,45)]
-    [int]$ExcludeUpdatesFromLastNDays #Excludes updates released within the last N days from being applied
+    [int]$ExcludeUpdatesFromLastNDays, #Excludes updates released within the last N days from being applied
+    [ValidateSet('scheduleAuto','scheduleManual','scheduleDaily','scheduleWeekly','scheduleMonthly')]
+    [string]$Schedule,
+    [string]$ScheduleDaily,
+    [string]$ScheduleWeekly,
+    [string]$ScheduleMonthly,
+    [ValidateSet('Enable','Disable')]
+    [string]$UpdateDeviceCategoryFilter = 'Disable',
+    [string[]]$UpdateDeviceCategories,
+    [ValidateSet('Enable','Disable')]
+    [string]$UpdateSeverityFilter = 'Disable',
+    [string[]]$UpdateSeverities,
+    [ValidateSet('Enable','Disable')]
+    [string]$UpdateTypeFilter = 'Disable',
+    [string[]]$UpdateTypes
     )
     
     $DCUPath = (Get-DCUInstallDetails).DCUPath
@@ -448,6 +504,25 @@ function Set-DCUSettings {
     $LogPath = "$env:SystemDrive\Users\Dell\EMPS\Logs"
     Write-Verbose "Log Path: $LogPath"
     $DateTimeStamp = Get-Date -Format "yyyyMMdd-HHmmss"
+
+    function Invoke-DCUConfigure {
+        param(
+            [Parameter(Mandatory)]
+            [string]$Setting,
+            [string]$LogName = $Setting
+        )
+
+        $configureArgs = "/configure $Setting -outputlog=`"$LogPath\DCU-CLI-$($DateTimeStamp)-Configure-$LogName.log`""
+        Write-Verbose $configureArgs
+        $configureProcess = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $configureArgs -NoNewWindow -PassThru -Wait
+        if ($configureProcess.ExitCode -ne 0) {
+            $exitInfo = Get-DCUExitInfo -DCUExit $configureProcess.ExitCode
+            Write-Verbose "Exit: $($configureProcess.ExitCode)"
+            Write-Verbose "Description: $($exitInfo.Description)"
+            Write-Verbose "Resolution: $($exitInfo.Resolution)"
+        }
+        return $configureProcess
+    }
     #$ArgList = "$ActionVar $updateSeverityVar $updateTypeVar $updateDeviceCategoryVar -outputlog=`"$LogPath\DCU-CLI-$($DateTimeStamp)-$Action.log`""
 
     if ($advancedDriverRestore){
@@ -613,6 +688,27 @@ function Set-DCUSettings {
             Write-Verbose "Description: $($ExitInfo.Description)"
             Write-Verbose "Resolution: $($ExitInfo.Resolution)"
         }
+    }
+
+    if ($Schedule) {
+        switch ($Schedule) {
+            'scheduleAuto' { $scheduleSetting = '-scheduleAuto' }
+            'scheduleManual' { $scheduleSetting = '-scheduleManual' }
+            'scheduleDaily' { $scheduleSetting = "-scheduleDaily=$ScheduleDaily" }
+            'scheduleWeekly' { $scheduleSetting = "-scheduleWeekly=$ScheduleWeekly,$ScheduleDaily" }
+            'scheduleMonthly' { $scheduleSetting = "-scheduleMonthly=$ScheduleMonthly,$ScheduleWeekly,$ScheduleDaily" }
+        }
+        Invoke-DCUConfigure -Setting $scheduleSetting -LogName 'schedule'
+    }
+
+    if ($UpdateDeviceCategoryFilter -eq 'Enable' -and $UpdateDeviceCategories) {
+        Invoke-DCUConfigure -Setting "-updateDeviceCategory=$($UpdateDeviceCategories -join ',')" -LogName 'updateDeviceCategory'
+    }
+    if ($UpdateSeverityFilter -eq 'Enable' -and $UpdateSeverities) {
+        Invoke-DCUConfigure -Setting "-updateSeverity=$($UpdateSeverities -join ',')" -LogName 'updateSeverity'
+    }
+    if ($UpdateTypeFilter -eq 'Enable' -and $UpdateTypes) {
+        Invoke-DCUConfigure -Setting "-updateType=$($UpdateTypes -join ',')" -LogName 'updateType'
     }
 }
 function Get-DCUSettings {
@@ -907,6 +1003,7 @@ Function Get-DellBIOSUpdates {
         [string]$SystemSKUNumber,
         [switch]$Latest,
         [switch]$Check, #This will find the latest BIOS update and compare it to the current BIOS version
+        [switch]$Details,
         [switch]$Flash,
         [string]$Password,
         [string]$DownloadPath
@@ -916,6 +1013,61 @@ Function Get-DellBIOSUpdates {
     if (!($SystemSKUNumber)) {
         if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems, or please provide a SKU"}
         $SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
+    }
+
+    if ($Details){
+        if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems"}
+
+        $BiosInfo = Get-CimInstance -ClassName Win32_BIOS
+        [version]$CurrentBIOSVersion = $BiosInfo.SMBIOSBIOSVersion
+        $CurrentBIOSReleaseDate = $null
+        if ($BiosInfo.ReleaseDate){
+            try {
+                $CurrentBIOSReleaseDate = [System.Management.ManagementDateTimeConverter]::ToDateTime($BiosInfo.ReleaseDate)
+            }
+            catch {
+                $CurrentBIOSReleaseDate = $BiosInfo.ReleaseDate
+            }
+        }
+
+        $AllBIOSUpdates = @(Get-DCUUpdateList -SystemSKUNumber $SystemSKUNumber -updateType BIOS)
+        $LatestBIOS = $AllBIOSUpdates | Sort-Object -Property ReleaseDate -Descending | Select-Object -First 1
+        if ($LatestBIOS){
+            [version]$LatestBIOSVersion = $LatestBIOS.DellVersion
+            $LatestBIOSReleaseDate = $LatestBIOS.ReleaseDate
+            $UpdateAvailable = $CurrentBIOSVersion -lt $LatestBIOSVersion
+            $BIOSIsCurrent = $CurrentBIOSVersion -ge $LatestBIOSVersion
+            $ReleasesSinceCurrent = @(
+                $AllBIOSUpdates |
+                    Where-Object {
+                        try {
+                            $CandidateVersion = [version]$_.DellVersion
+                            $CandidateVersion -gt $CurrentBIOSVersion
+                        }
+                        catch {
+                            $false
+                        }
+                    } |
+                    Select-Object -ExpandProperty DellVersion -Unique
+            ).Count
+        }
+        else {
+            $LatestBIOSVersion = $null
+            $LatestBIOSReleaseDate = $null
+            $UpdateAvailable = $false
+            $BIOSIsCurrent = $true
+            $ReleasesSinceCurrent = 0
+        }
+
+        return [PSCustomObject]@{
+            CurrentBIOSVersion = $CurrentBIOSVersion
+            CurrentBIOSReleaseDate = $CurrentBIOSReleaseDate
+            LatestBIOSVersion = $LatestBIOSVersion
+            LatestBIOSReleaseDate = $LatestBIOSReleaseDate
+            UpdateAvailable = $UpdateAvailable
+            BIOSIsCurrent = $BIOSIsCurrent
+            ReleasesSinceCurrent = $ReleasesSinceCurrent
+        }
     }
     
     if ($Check){
@@ -987,14 +1139,40 @@ Function Get-DellBIOSUpdates {
                 $BIOSArgs = "/s /l=$UpdateLocalPath.log"
             }
             $InstallUpdate = Start-Process -FilePath $UpdateLocalPath -ArgumentList $BIOSArgs -Wait -PassThru
-            Write-Host "Exit Code: $($InstallUpdate.ExitCode)"
-            if ($InstallUpdate.ExitCode -ne 0){
-                $ExitInfo = Get-DUPExitInfo -DUPExit $InstallUpdate.ExitCode
-                Write-Host "Exit: $($InstallUpdate.ExitCode)"
-                Write-Host "Code Name: $($ExitInfo.DisplayName)"
-                Write-Host "Description: $($ExitInfo.Description)"
+            $LogPath = "$UpdateLocalPath.log"
+            $ExitInfo = Get-DUPExitInfo -DUPExit $InstallUpdate.ExitCode | Select-Object -First 1
+            if (-not $ExitInfo) {
+                $ExitInfo = [PSCustomObject]@{
+                    ExitCode = $InstallUpdate.ExitCode
+                    DisplayName = 'Unknown'
+                    Description = 'No matching Dell DUP BIOS exit-code documentation was found.'
+                }
             }
-            return
+
+            if (Test-Path -Path $LogPath) {
+                $LogContent = Get-Content -Path $LogPath -Raw -ErrorAction SilentlyContinue
+                $LoggedExitCode = [regex]::Match($LogContent, '(?im)^\s*Exit Code\s*=\s*(?<Value>.+?)\s*$')
+                $LoggedError = [regex]::Match($LogContent, '(?im)^\s*Error:\s*(?<Value>.+?)\s*$')
+
+                if ($LoggedExitCode.Success) {
+                    $ExitInfo.DisplayName = $LoggedExitCode.Groups['Value'].Value.Trim()
+                }
+                if ($LoggedError.Success) {
+                    $ExitInfo.Description = $LoggedError.Groups['Value'].Value.Trim()
+                }
+            }
+            Write-Host "Exit Code: $($ExitInfo.ExitCode)"
+            Write-Host "Code Name: $($ExitInfo.DisplayName)"
+            Write-Host "Description: $($ExitInfo.Description)"
+            return [PSCustomObject]@{
+                Update = $UpdateFileName
+                ExitCode = $ExitInfo.ExitCode
+                CodeName = $ExitInfo.DisplayName
+                Description = $ExitInfo.Description
+                LogPath = $LogPath
+                Success = $ExitInfo.ExitCode -in @(0, 2)
+                RebootRequired = $ExitInfo.ExitCode -eq 2
+            }
         }
         else {
             Write-Host "File Not Found: $UpdateFileName"
@@ -1018,26 +1196,6 @@ Function Get-DellBIOSUpdates {
         $Updates = Get-DCUUpdateList -SystemSKUNumber $SystemSKUNumber -updateType BIOS
     }
     return $Updates |Select-Object -Property "PackageID","Name","ReleaseDate","DellVersion" | Sort-Object -Property ReleaseDate -Descending
-}
-
-Function Invoke-DellIntuneAppPublishScript {
-
-    write-host Write-Host -ForegroundColor Green "[+] Function: Invoke-PublishDellIntuneApp"
-    $Description = "
-    This Functions when invoked will do the below tasks
-        1. show the UI to user to select required application
-        2. Download the application that is posted for admin portal production to customer system
-        3. Extract the contents and read the CreateAPPConfig.json file
-        4. create win32_Lob App in intune
-        5. Get APP file version
-        6. Upload and commit intunewin file to Azure Storage Blob
-        7. Update the file version in the Intune application
-        "
-    Write-Output $Description
-
-    function Invoke-PublishDellIntuneApp{
-        iex (irm https://raw.githubusercontent.com/dell/Endpoint-Management-Script-Library/refs/heads/main/Intune%20Scripts/EnterpriseAppDeployment/Dell_Intune_App_Publish_1.0.ps1 -help)
-    }
 }
 
 <# Placeholders for future functions
