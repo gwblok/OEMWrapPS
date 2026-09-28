@@ -303,8 +303,16 @@ Function Get-DCUAppUpdates {
                 #Confirm Download
                 if (Test-Path $TargetFilePathName){
                     $LogFileName = ($TargetFilePathName.replace(".exe",".log")).Replace(".EXE",".log")
-                    $Arguments = "/s /l=$LogFileName"
+                    if ($DCUVersion -ge [version]'5.7.1') {
+                        $Arguments = "/s /l=`"$LogFileName`" /v`"IGNOREOOBE=`"1`" /qn`""
+                        Write-Output "DCU $DCUVersion supports OOBE deployment; enabling IgnoreOOBE."
+                    }
+                    else {
+                        $Arguments = "/s /l=`"$LogFileName`""
+                        Write-Verbose "DCU $DCUVersion predates 5.7.1; installing without the IgnoreOOBE property."
+                    }
                     Write-Output "Starting DCU Install"
+                    Write-Verbose "DCU installer arguments: $Arguments"
                     write-output "Log file = $LogFileName"
                     $Process = Start-Process "$TargetFilePathName" $Arguments -Wait -PassThru
                     write-output "Update Complete with Exitcode: $($Process.ExitCode)"
@@ -363,6 +371,40 @@ Function Get-DCUAppUpdates {
                     }
                     If($Process -ne $null -and $Process.ExitCode -eq '2'){
                         Write-Verbose "Reboot Required"
+                    }
+                    if ($DCUVersion -ge [version]'5.7.1' -and $Process -and $Process.ExitCode -in @(0, 2)) {
+                        $IgnoreOOBEKey = 'HKLM:\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler'
+                        $IgnoreOOBEValue = $null
+                        $IgnoreOOBEKind = $null
+
+                        if (Test-Path -LiteralPath $IgnoreOOBEKey) {
+                            $IgnoreOOBEValue = Get-ItemPropertyValue -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -ErrorAction SilentlyContinue
+                            try {
+                                $IgnoreOOBEKind = (Get-Item -LiteralPath $IgnoreOOBEKey).GetValueKind('IgnoreOOBE')
+                            }
+                            catch {
+                                $IgnoreOOBEKind = $null
+                            }
+                        }
+
+                        if ($IgnoreOOBEValue -ne 1 -or $IgnoreOOBEKind -ne [Microsoft.Win32.RegistryValueKind]::DWord) {
+                            Write-Output 'Setting Dell UpdateScheduler\IgnoreOOBE to DWORD 1.'
+                            $null = New-Item -Path $IgnoreOOBEKey -Force -ErrorAction Stop
+                            if ($null -ne $IgnoreOOBEKind) {
+                                Remove-ItemProperty -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -Force -ErrorAction SilentlyContinue
+                            }
+                            $null = New-ItemProperty -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -Value 1 -PropertyType DWord -Force -ErrorAction Stop
+                        }
+                        else {
+                            Write-Output 'Dell UpdateScheduler\IgnoreOOBE is already set to DWORD 1.'
+                        }
+
+                        $VerifiedIgnoreOOBEValue = Get-ItemPropertyValue -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -ErrorAction Stop
+                        $VerifiedIgnoreOOBEKind = (Get-Item -LiteralPath $IgnoreOOBEKey).GetValueKind('IgnoreOOBE')
+                        if ($VerifiedIgnoreOOBEValue -ne 1 -or $VerifiedIgnoreOOBEKind -ne [Microsoft.Win32.RegistryValueKind]::DWord) {
+                            throw 'Dell UpdateScheduler\IgnoreOOBE registry verification failed.'
+                        }
+                        Write-Output 'Verified Dell UpdateScheduler\IgnoreOOBE is DWORD 1.'
                     }
                 }
                 else{

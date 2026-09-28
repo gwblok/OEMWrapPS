@@ -61,6 +61,16 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 - Severity filters such as security, critical, recommended, and optional.
 - Update type filters such as BIOS, firmware, driver, application, utility, and others.
 
+`Get-DCUAppUpdates -Install` installs the latest catalog-listed Dell Command
+Update package when it is newer than the installed version. For DCU 5.7.1 and
+later, the installer is invoked with Dell's `IGNOREOOBE="1"` property so it can
+run while Windows OOBE is active. After a successful install (including an
+automatic prerequisite retry), the function confirms that
+`HKLM\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler\IgnoreOOBE` exists as
+a DWORD with value `1`, creating or correcting it if needed. Dell documents
+this behavior in [How to Allow Dell Command Update to Run During the Windows
+Out-of-Box Experience](https://www.dell.com/support/kbdoc/en-us/000497911/how-to-allow-dell-command-update-to-run-during-the-windows-out-of-box-experience?lang=en).
+
 Use `Get-DellBIOSUpdates -Details` to return a status object with:
 
 - `CurrentBIOSVersion` and `CurrentBIOSReleaseDate`

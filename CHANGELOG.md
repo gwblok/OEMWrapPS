@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.12] - 2026-09-26
+
+### Added
+
+- Updated `Get-DCUAppUpdates -Install` to pass Dell's `IGNOREOOBE="1"` installer property when installing Dell Command Update 5.7.1 or later.
+- After a successful DCU 5.7.1+ installation, verify `HKLM\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler\IgnoreOOBE` is a DWORD set to `1`; create or correct it when needed.
+- Re-verify the OOBE registry setting after a successful prerequisite-triggered installer retry.
+
+### References
+
+- [How to Allow Dell Command Update to Run During the Windows Out-of-Box Experience](https://www.dell.com/support/kbdoc/en-us/000497911/how-to-allow-dell-command-update-to-run-during-the-windows-out-of-box-experience?lang=en)
+
+
 ## [1.0.11] - 2026-09-25
 
 ### Removed
