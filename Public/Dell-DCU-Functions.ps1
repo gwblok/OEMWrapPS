@@ -373,7 +373,7 @@ Function Get-DCUAppUpdates {
                         $IgnoreOOBEKind = $null
 
                         if (Test-Path -LiteralPath $IgnoreOOBEKey) {
-                            $IgnoreOOBEValue = Get-ItemPropertyValue -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -ErrorAction SilentlyContinue
+                            $IgnoreOOBEValue = Get-ItemPropertyValue -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -ErrorAction SilentlyContinue -ErrorVariable IgnoreOOBEReadError 2>$null
                             try {
                                 $IgnoreOOBEKind = (Get-Item -LiteralPath $IgnoreOOBEKey).GetValueKind('IgnoreOOBE')
                             }

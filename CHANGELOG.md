@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.3] - 2026-09-28
+
+### Fixed
+
+- Suppressed the expected registry lookup error when `IgnoreOOBE` does not yet exist. `Get-DCUAppUpdates -Install` now reports that it is adding the value and then confirms it was set successfully.
+
 ## [1.1.2] - 2026-09-28
 
 ### Fixed
