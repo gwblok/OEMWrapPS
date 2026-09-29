@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.4] - 2026-09-29
+
+### Changed
+
+- `Install-DellUpdate` now shows BITS download progress, clearer preparation and installation messages, a per-package download failure message, and an installation summary table.
+- `Install-DellUpdate` result objects now have a concise default console display showing the update title, success state, reboot requirement, exit code, failure reason, log path, and runtime.
+- Dell model-catalog applicability detection now evaluates the matching installed driver branch, avoiding false pending updates caused by superseded driver-store INFs from another version branch.
+
 ## [1.1.3] - 2026-09-28
 
 ### Fixed

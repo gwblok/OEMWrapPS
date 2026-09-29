@@ -106,6 +106,8 @@ Administrator Options](https://www.dell.com/support/kbdoc/en-us/000148745/dup-bi
 
 These commands evaluate Dell's model-specific update catalog against Windows device and driver inventory. They do not require Dell Command Update for scanning; installation requires an elevated session. Payloads are verified against the catalog SHA-256 digest and Dell Authenticode signature before installation.
 
+`Install-DellUpdate` displays BITS download progress, clearly separates download and installation phases, and emits a completion summary with each update's status, exit code, and reboot requirement. Catalog matching evaluates the installed driver version branch so superseded INFs in the driver store do not create false pending updates.
+
 Source: [Public/Dell.Client.Update](Public/Dell.Client.Update)
 
 | Function | Description |
