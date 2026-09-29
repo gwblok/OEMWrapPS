@@ -112,6 +112,7 @@ function Install-DellUpdate {
     begin {
         $pipelinePackages = [System.Collections.Generic.List[object]]::new()
         $historyRecords = [System.Collections.Generic.List[object]]::new()
+        $results = [System.Collections.Generic.List[object]]::new()
     }
 
     process {
@@ -130,6 +131,16 @@ function Install-DellUpdate {
             param([string]$Message)
             if ($NoLog -or -not $logPath) { return }
             Add-Content -LiteralPath $logPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $Message" -Encoding UTF8
+        }
+
+        function Set-DellInstallResultDisplay {
+            param([Parameter(Mandatory)][psobject]$Result)
+
+            $Result.PSObject.TypeNames.Insert(0, 'Dell.Client.Update.DellInstallResult')
+            $properties = [string[]]@('ID', 'Title', 'Success', 'RebootRequired', 'PendingAction', 'ExitCode', 'FailureReason', 'LogPath', 'Runtime')
+            $propertySet = [System.Management.Automation.PSPropertySet]::new('DefaultDisplayPropertySet', $properties)
+            $members = [System.Management.Automation.PSMemberSet]::new('PSStandardMembers', [System.Management.Automation.PSMemberInfo[]]@($propertySet))
+            $Result.PSObject.Members.Add($members)
         }
 
         function Publish-DellInstallationResult {
@@ -239,7 +250,7 @@ function Install-DellUpdate {
         }
 
         try {
-            Write-Host "Found $($selectedPackages.Count) updates, starting process.."
+            Write-Host "Preparing $($selectedPackages.Count) Dell update package(s)..."
             $downloadedPackages = [System.Collections.Generic.List[object]]::new()
             $downloadNumber = 0
             foreach ($package in $selectedPackages) {
@@ -259,7 +270,7 @@ function Install-DellUpdate {
                     }
                     if ($actualDigest -ine [string]$package.Sha256) {
                         Write-DellInstallationLog "Downloading $($package.ReleaseID) from $sourceUri"
-                        Invoke-DellDownload -Source $sourceUri -Destination $installerPath -Proxy $Proxy -ProxyCredential $ProxyCredential -ProxyUseDefaultCredentials:$ProxyUseDefaultCredentials
+                        Invoke-DellDownload -Source $sourceUri -Destination $installerPath -Proxy $Proxy -ProxyCredential $ProxyCredential -ProxyUseDefaultCredentials:$ProxyUseDefaultCredentials -ShowProgress
                     }
                     else {
                         Write-Host "Using previously downloaded payload for $($package.ReleaseID)."
@@ -286,15 +297,18 @@ function Install-DellUpdate {
                         LogPath = $logPath
                         Runtime = (Get-Date) - $startedAt
                     }
-                    $result.PSObject.TypeNames.Insert(0, 'Dell.Client.Update.DellInstallResult')
+                    Set-DellInstallResultDisplay -Result $result
                     Publish-DellInstallationResult -Package $package -Result $result
                     $historyRecords.Add((New-DellUpdateHistoryRecord -Package $package -Result $result))
+                    $results.Add($result)
+                    Write-Host "Download failed: $($package.Title) - $($result.FailureReason)"
                     $result
                 }
             }
 
+            if (-not $downloadedPackages.Count -and -not $results.Count) { return }
             if ($downloadedPackages.Count) {
-                Write-Host 'Download phase complete. Starting installation phase..'
+                Write-Host 'Starting installation phase...'
             }
             $installNumber = 0
             foreach ($downloadedPackage in $downloadedPackages) {
@@ -303,7 +317,7 @@ function Install-DellUpdate {
                 $installerPath = $downloadedPackage.InstallerPath
                 $startedAt = $downloadedPackage.StartedAt
                 try {
-                    Write-Host "Installing update $installNumber of $($downloadedPackages.Count): $($package.Title)"
+                    Write-Host "Installing Update $($package.Title) ($installNumber of $($downloadedPackages.Count))"
 
                     Write-DellInstallationLog "Starting $($package.ReleaseID): $installerPath /s"
                     $processResult = Start-Process -FilePath $installerPath -ArgumentList '/s' -WorkingDirectory $payloadDirectory -Wait -PassThru
@@ -324,9 +338,10 @@ function Install-DellUpdate {
                         LogPath = $logPath
                         Runtime = $processResult.ExitTime - $processResult.StartTime
                     }
-                    $result.PSObject.TypeNames.Insert(0, 'Dell.Client.Update.DellInstallResult')
+                    Set-DellInstallResultDisplay -Result $result
                     Publish-DellInstallationResult -Package $package -Result $result
                     $historyRecords.Add((New-DellUpdateHistoryRecord -Package $package -Result $result))
+                    $results.Add($result)
                     $result
                 }
                 catch {
@@ -344,11 +359,18 @@ function Install-DellUpdate {
                         LogPath = $logPath
                         Runtime = (Get-Date) - $startedAt
                     }
-                    $result.PSObject.TypeNames.Insert(0, 'Dell.Client.Update.DellInstallResult')
+                    Set-DellInstallResultDisplay -Result $result
                     Publish-DellInstallationResult -Package $package -Result $result
                     $historyRecords.Add((New-DellUpdateHistoryRecord -Package $package -Result $result))
+                    $results.Add($result)
                     $result
                 }
+            }
+            if ($results.Count) {
+                $succeeded = @($results | Where-Object Success).Count
+                $rebootCount = @($results | Where-Object RebootRequired).Count
+                Write-Host "Installation summary: $succeeded succeeded ($rebootCount require reboot), $($results.Count - $succeeded) failed."
+                $results | Select-Object Title, @{ Name = 'Status'; Expression = { if (-not $_.Success) { 'Failed' } elseif ($_.RebootRequired) { 'Reboot required' } else { 'Success' } } }, ExitCode, FailureReason | Format-Table -AutoSize -Wrap | Out-Host
             }
         }
         finally {

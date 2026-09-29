@@ -249,11 +249,15 @@ function Get-DellModelComponentState {
 
     $componentResults = @(Get-DellModelComponentMatches -Component $Component -Inventory $Inventory)
     if (-not $componentResults.Count) { return $null }
+    $relevantResults = @(foreach ($deviceGroup in ($componentResults | Group-Object DeviceId, InfType)) {
+        $sameBranch = @($deviceGroup.Group | Where-Object { $_.ExpectedVersion.Major -eq $_.InstalledVersion.Major })
+        if ($sameBranch.Count) { $sameBranch } else { $deviceGroup.Group }
+    })
     # Current base and extension markers identify an installed bundle even
     # when superseded INFs remain in the Windows driver store.
-    $hasCurrentExtensionMarker = [bool]($componentResults | Where-Object { $_.IdentityType -eq 'Extension' -and $_.InfType -eq 'extension' -and $_.InstalledVersion -ge $_.ExpectedVersion } | Select-Object -First 1)
-    $hasCurrentBaseMarker = [bool]($componentResults | Where-Object { $_.IdentityType -eq 'PnP' -and $_.InfType -eq 'base' -and $_.InstalledVersion -ge $_.ExpectedVersion } | Select-Object -First 1)
-    $outdatedResults = @($componentResults | Where-Object { $_.InstalledVersion -lt $_.ExpectedVersion })
+    $hasCurrentExtensionMarker = [bool]($relevantResults | Where-Object { $_.IdentityType -eq 'Extension' -and $_.InfType -eq 'extension' -and $_.InstalledVersion -ge $_.ExpectedVersion } | Select-Object -First 1)
+    $hasCurrentBaseMarker = [bool]($relevantResults | Where-Object { $_.IdentityType -eq 'PnP' -and $_.InfType -eq 'base' -and $_.InstalledVersion -ge $_.ExpectedVersion } | Select-Object -First 1)
+    $outdatedResults = @($relevantResults | Where-Object { $_.InstalledVersion -lt $_.ExpectedVersion })
     $isInstalled = $hasCurrentExtensionMarker -or $hasCurrentBaseMarker -or $outdatedResults.Count -eq 0
     $applicabilityReason = if ($isInstalled) {
         'Installed component markers meet or exceed the Dell catalog versions.'
@@ -266,7 +270,7 @@ function Get-DellModelComponentState {
     return [pscustomobject]@{
         IsApplicable = $true
         IsInstalled = $isInstalled
-        Matches = $componentResults
+        Matches = $relevantResults
         ApplicabilityReason = $applicabilityReason
     }
 }
