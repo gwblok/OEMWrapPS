@@ -12,7 +12,7 @@
 RootModule = 'OEMWrapPS.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.1.4'
+ModuleVersion = '1.1.7'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -30,7 +30,7 @@ CompanyName = 'GARYTOWN.COM'
 Copyright = '(c) Gary Blok (@gwblok). All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'PowerShell module wrapping OEM hardware management functions for Dell and HP devices. Includes Dell BIOS WMI management, Dell Command Update (DCU), native Dell model-catalog update scanning and installation, Dell Warranty retrieval, and HP Image Assistant (HPIA) support functions.'
+Description = 'PowerShell module wrapping OEM hardware management functions for Dell and HP devices. Includes Dell BIOS WMI management, Dell Command Update (DCU), native Dell and HP model-catalog update scanning and installation, Dell Warranty retrieval, and HP Image Assistant (HPIA) support functions.'
 
 # Minimum version of the PowerShell engine required by this module
 PowerShellVersion = '5.1'
@@ -69,20 +69,19 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'Get-DCUAppUpdates', 'Get-DCUExitInfo', 'Get-DCUInstallDetails', 
+FunctionsToExport = 'Get-DCUAppUpdates', 'Get-DCUInstallDetails',
                'Get-DCUSettings', 'Get-DCUUpdateList', 'Get-DCUVersion', 
-               'Get-DUPExitInfo', 'Get-DellBIOSSetting', 'Get-DellBIOSUpdates', 
+               'Get-DellBIOSSetting', 'Get-DellBIOSUpdates',
                'Get-DellDeviceDetails', 'Get-DellDeviceDriverPack', 
                'Get-DellDriverPackXML', 'Get-DellSupportedModels', 
-               'Get-DellWarrantyInfo', 'Get-HPDriverPackLatest', 'Get-HPOSSupport', 
-               'Get-HPSoftPaqItems', 'Get-HPSoftpaqListLatest', 
-               'Invoke-DCU',
-               'Invoke-HPIAOfflineSync', 'Set-DCUSettings', 
+               'Get-DellWarrantyInfo', 'Get-HPDriverPackLatest', 'Install-HPIA',
+               'Invoke-DCU', 'Invoke-HPIA', 'Set-DCUSettings',
                'Set-DellBIOSAdminPassword', 'Set-DellBIOSSetting', 
                'Test-DellBIOSPassword', 'Test-DellBIOSWMISupport', 
                'Test-HPIASupport', 'Test-UrlExists', 'Get-LatestDotNetVersion',
                'Install-DCUPreReqDOTNet', 'Get-DellUpdate', 'Get-DellUpdateHist',
-               'Install-DellUpdate'
+               'Install-DellUpdate', 'Get-HPUpdate', 'Get-HPUpdateHist',
+               'Install-HPUpdate'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()

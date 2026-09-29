@@ -33,7 +33,7 @@ Source: [Public/Dell-BIOS-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blo
 
 ### Dell – Command Update (DCU)
 
-Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/main/Public/Dell-DCU-Functions.ps1)
+Source: [Public/Dell.DCU](Public/Dell.DCU)
 
 | Function | Description |
 |---|---|
@@ -41,8 +41,6 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DellDriverPackXML` | Downloads and parses the Dell Driver Pack catalog XML |
 | `Get-DCUVersion` | Returns the installed Dell Command Update version |
 | `Get-DCUInstallDetails` | Returns DCU install details (version, app type, path) |
-| `Get-DCUExitInfo` | Provides descriptions for DCU exit codes |
-| `Get-DUPExitInfo` | Provides descriptions for Dell Update Package exit codes |
 | `Get-DCUAppUpdates` | Retrieves available app updates from DCU |
 | `Set-DCUSettings` | Configures DCU settings via dcu-cli.exe, including schedules, deferrals, delay days, and update filters |
 | `Get-DCUSettings` | Lists current DCU settings from the registry |
@@ -51,6 +49,8 @@ Source: [Public/Dell-DCU-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob
 | `Get-DellDeviceDetails` | Retrieves Dell device details (model, system ID) |
 | `Get-DellDeviceDriverPack` | Retrieves the driver pack for a Dell device |
 | `Get-DellBIOSUpdates` | Retrieves BIOS updates; `-Details` returns BIOS status, and `-Flash` installs the latest update with Dell DUP exit-code and log details |
+
+`Get-DCUExitInfo` and `Get-DUPExitInfo` remain internal helpers used by the Dell DCU and BIOS update commands.
 
 `Set-DCUSettings` supports hard-coded or scripted configuration for:
 
@@ -136,16 +136,32 @@ Source: [Public/Dell-Warranty-Functions.ps1](https://github.com/gwblok/OEMWrapPS
 
 ### HP – Image Assistant (HPIA)
 
-Source: [Public/HP-HPIA-Functions.ps1](https://github.com/gwblok/OEMWrapPS/blob/main/Public/HP-HPIA-Functions.ps1)
+Source: [Public/HP.HPIA](Public/HP.HPIA)
 
 | Function | Description |
 |---|---|
 | `Test-HPIASupport` | Tests if a given HP platform ID is supported by HPIA |
-| `Get-HPOSSupport` | Returns the list of supported OS versions for an HP platform |
-| `Get-HPSoftpaqListLatest` | Retrieves the latest SoftPaq list for an HP platform |
-| `Get-HPSoftPaqItems` | Retrieves SoftPaq items for a specific HP platform and OS version |
 | `Get-HPDriverPackLatest` | Returns the latest driver pack available for an HP platform |
-| `Invoke-HPIAOfflineSync` | Creates and syncs an offline HPIA repository for a platform |
+| `Install-HPIA` | Downloads and extracts the current HPIA release |
+| `Invoke-HPIA` | Runs HPIA analysis, download, extract, or install operations |
+
+### HP – Client Updates (native catalog)
+
+These commands evaluate HP's platform-specific recommendation API against local Windows device, package, BIOS, and UWP state. They do not require HP Client Management Script Library (HP CMSL). Installation requires an elevated session.
+
+Source: [Public/HP.Client.Update](Public/HP.Client.Update)
+
+| Function | Description |
+|---|---|
+| `Get-HPUpdate` | Finds applicable HP SoftPaq updates. Supports `-Type` (`All`, `BIOS`, `Drivers`, `Software`, `Firmware`, `Accessories`) and `-ReleaseType` (`All`, `Critical`, `Recommended`, `Routine`) filters. |
+| `Install-HPUpdate` | Downloads, validates, and silently installs selected HP SoftPaq update objects; supports WhatIf and JSON history. |
+| `Get-HPUpdateHist` | Reads and filters local HP update installation history. |
+
+```powershell
+Get-HPUpdate
+Get-HPUpdate -Type Drivers
+Get-HPUpdate | Install-HPUpdate -WhatIf
+```
 
 ## File Locations
 
@@ -158,9 +174,11 @@ All downloads, working files, and logs are written under
 | `DellBIOSUpdates` | Dell BIOS update packages downloaded by `Get-DellBIOSUpdates -Flash` |
 | `Dell` | Dell warranty export and service tag files |
 | `.NETInstallers` | .NET Desktop Runtime prerequisite installers |
-| `HP` | HP platform list and HPIA catalog cab/XML files |
-| `Catalogs`, `Downloads`, `History` | Dell client update catalogs, payloads, and installation history |
-| `Logs` | Dell Command Update CLI logs, Dell update install logs, and HPIA offline sync logs |
+| `HP`, `Catalogs\HPIA` | HP platform list, HPIA catalog cab/XML files, and HPIA release metadata |
+| `Downloads\HPIA`, `Downloads\HPDriverPacks` | HPIA installation payloads and downloaded HP driver packs |
+| `HPIA`, `Reports\HPIA` | Extracted HPIA executable and HPIA operation reports |
+| `Catalogs`, `Downloads`, `History` | Dell and HP client update catalogs, payloads, and installation history |
+| `Logs` | Dell Command Update CLI logs, Dell and HP update install logs, and HPIA offline sync logs |
 
 ## Requirements
 
@@ -168,8 +186,9 @@ All downloads, working files, and logs are written under
 - For Dell BIOS functions: Dell device with WMI BIOS support (manufactured 2018 or newer), administrative privileges
 - For Dell DCU functions: Dell Command Update installed
 - For Dell Client Update functions: Windows on a Dell device for catalog scanning; elevated PowerShell for installation
+- For HP Client Update functions: Windows on an HP device for catalog scanning; elevated PowerShell for installation
 - For Dell Warranty functions: Dell Command Integration Suite (auto-downloaded if not present)
-- For HP HPIA functions: HP device; HP Client Management Script Library (HPCMSL) for `Invoke-HPIAOfflineSync`
+- For HP HPIA functions: HP device and internet access; HP Client Management Script Library (HP CMSL) is not required
 - BIOS flashing may require administrative privileges, BitLocker suspension, a charged battery, and a restart.
 
 ## Changelog

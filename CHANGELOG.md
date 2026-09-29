@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.7] - 2026-09-29
+
+### Changed
+
+- Split Dell Command Update and Dell catalog functions from the `Public` root into `Public\Dell.DCU\Public`; internal exit-code decoders are in `Public\Dell.DCU\Private`. Command names and behavior are unchanged.
+- `Get-DCUExitInfo` and `Get-DUPExitInfo` are now internal helpers and are no longer exported as public module commands.
+
+## [1.1.6] - 2026-09-29
+
+### Changed
+
+- Added `Install-HPIA` and `Invoke-HPIA` to OEMWrapPS. HPIA installation, downloads, working files, reports, and CMTrace logs now use `C:\ProgramData\OEMWrapPS` subfolders.
+- `Get-HPDriverPackLatest -Download` now downloads to `C:\ProgramData\OEMWrapPS\Downloads\HPDriverPacks` instead of `C:\Drivers` and no longer calls the undefined `Save-WebFile` helper.
+- Removed the HP CMSL-dependent offline repository sync implementation. The remaining HP functions do not require HP CMSL.
+- HPIA public exports are limited to `Test-HPIASupport`, `Get-HPDriverPackLatest`, `Install-HPIA`, and `Invoke-HPIA`; other HPIA utilities remain internal helpers.
+
+## [1.1.5] - 2026-09-29
+
+### Added
+
+- Added native HP Client Update commands: `Get-HPUpdate`, `Install-HPUpdate`, and `Get-HPUpdateHist`.
+- HP update discovery uses HP's recommendation API, HPIA reference catalog, Windows device inventory, package detail files, BIOS version, UWP app state, and software-component metadata to return applicable SoftPaqs without requiring HP CMSL.
+- `Install-HPUpdate` supports pipeline input, WhatIf, package filters, SHA-256 and HP Authenticode validation, silent installation, logs, and JSON history under `C:\ProgramData\OEMWrapPS`.
+- `Get-HPUpdate` supports tab-completable `-Type` and `-ReleaseType` filters; both default to `All`.
+
 ## [1.1.4] - 2026-09-29
 
 ### Changed
