@@ -106,33 +106,64 @@ function Install-HPUpdate {
             foreach ($biosPackage in $skippedBiosPackages) { Write-HPUpdateInstallationLog "Skipped BIOS update $($biosPackage.ID) ($($biosPackage.Name) $($biosPackage.Version)) by policy." }
         }
         try {
+            Write-Host "Preparing $($selectedPackages.Count) HP update package(s)..."
             $downloadedPackages = [System.Collections.Generic.List[object]]::new()
+            $downloadNumber = 0
             foreach ($package in $selectedPackages) {
+                $downloadNumber++
                 if (-not $PSCmdlet.ShouldProcess($package.Title, 'Download, verify, and install HP update')) { continue }
                 $startedAt = Get-Date
                 try {
+                    Write-Host "Downloading update $downloadNumber of $($selectedPackages.Count): $($package.Title)"
                     $sourceUri = [uri]$package.DownloadUri
                     if ($sourceUri.Scheme -ne 'https') { throw "Refusing non-HTTPS catalog payload URI: '$sourceUri'." }
                     $null = New-Item -Path $payloadDirectory -ItemType Directory -Force
                     $installerPath = Join-Path $payloadDirectory ([IO.Path]::GetFileName($sourceUri.AbsolutePath))
                     $actualDigest = if (Test-Path -LiteralPath $installerPath -PathType Leaf) { (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash }
-                    if ($actualDigest -ine [string]$package.Sha256) { Invoke-HPUpdateDownload -Source $sourceUri -Destination $installerPath -Proxy $Proxy -ProxyCredential $ProxyCredential -ProxyUseDefaultCredentials:$ProxyUseDefaultCredentials -ShowProgress }
+                    if ($actualDigest -ine [string]$package.Sha256) {
+                        Write-HPUpdateInstallationLog "Downloading $($package.SoftpaqID) from $sourceUri"
+                        Invoke-HPUpdateDownload -Source $sourceUri -Destination $installerPath -Proxy $Proxy -ProxyCredential $ProxyCredential -ProxyUseDefaultCredentials:$ProxyUseDefaultCredentials -ShowProgress
+                    }
+                    else {
+                        Write-Host "Using previously downloaded payload for $($package.SoftpaqID)."
+                    }
                     $null = Test-HPUpdatePackage -Path $installerPath -ExpectedSha256 $package.Sha256
                     $downloadedPackages.Add([pscustomobject]@{ Package = $package; InstallerPath = $installerPath; StartedAt = $startedAt })
                 }
-                catch { New-HPUpdateInstallResult -Package $package -Success $false -RebootRequired $false -ExitCode $null -FailureReason $_.Exception.Message -Runtime ((Get-Date) - $startedAt) }
+                catch {
+                    Write-HPUpdateInstallationLog "Failed to download or validate $($package.SoftpaqID): $($_.Exception.Message)"
+                    $result = New-HPUpdateInstallResult -Package $package -Success $false -RebootRequired $false -ExitCode $null -FailureReason $_.Exception.Message -Runtime ((Get-Date) - $startedAt)
+                    Write-Host "Download failed: $($package.Title) - $($result.FailureReason)"
+                    $result
+                }
             }
+            if (-not $downloadedPackages.Count -and -not $results.Count) { return }
+            if ($downloadedPackages.Count) { Write-Host 'Starting installation phase...' }
+            $installNumber = 0
             foreach ($downloadedPackage in $downloadedPackages) {
+                $installNumber++
                 $package = $downloadedPackage.Package
                 $startedAt = $downloadedPackage.StartedAt
                 try {
+                    Write-Host "Installing Update $($package.Title) ($installNumber of $($downloadedPackages.Count))"
+                    Write-HPUpdateInstallationLog "Starting $($package.SoftpaqID): $($downloadedPackage.InstallerPath)"
                     $process = Start-Process -FilePath $downloadedPackage.InstallerPath -ArgumentList '-s', '-e cmd.exe', "/f `"$payloadDirectory`"", '-a', "/c $($package.Installer.Arguments)" -WorkingDirectory $payloadDirectory -Wait -PassThru
                     $successCodes = if (@($package.SuccessCodes).Count) { @($package.SuccessCodes) } else { @(0) }
                     $success = $process.ExitCode -in $successCodes
                     $rebootRequired = $process.ExitCode -in @($package.RebootCodes)
+                    Write-HPUpdateInstallationLog "Completed $($package.SoftpaqID) with exit code $($process.ExitCode)."
                     New-HPUpdateInstallResult -Package $package -Success $success -RebootRequired $rebootRequired -ExitCode $process.ExitCode -FailureReason $(if ($success) { '' } else { "HP SoftPaq exited with code $($process.ExitCode)." }) -Runtime ($process.ExitTime - $process.StartTime)
                 }
-                catch { New-HPUpdateInstallResult -Package $package -Success $false -RebootRequired $false -ExitCode $null -FailureReason $_.Exception.Message -Runtime ((Get-Date) - $startedAt) }
+                catch {
+                    Write-HPUpdateInstallationLog "Failed $($package.SoftpaqID): $($_.Exception.Message)"
+                    New-HPUpdateInstallResult -Package $package -Success $false -RebootRequired $false -ExitCode $null -FailureReason $_.Exception.Message -Runtime ((Get-Date) - $startedAt)
+                }
+            }
+            if ($results.Count) {
+                $succeeded = @($results | Where-Object Success).Count
+                $rebootCount = @($results | Where-Object RebootRequired).Count
+                Write-Host "Installation summary: $succeeded succeeded ($rebootCount require reboot), $($results.Count - $succeeded) failed."
+                $results | Select-Object Title, @{ Name = 'Status'; Expression = { if (-not $_.Success) { 'Failed' } elseif ($_.RebootRequired) { 'Reboot required' } else { 'Success' } } }, ExitCode, FailureReason | Format-Table -AutoSize -Wrap | Out-Host
             }
         }
         finally {

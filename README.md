@@ -157,6 +157,8 @@ Source: [Public/HP.Client.Update](Public/HP.Client.Update)
 | `Install-HPUpdate` | Downloads, validates, and silently installs selected HP SoftPaq update objects; supports WhatIf and JSON history. |
 | `Get-HPUpdateHist` | Reads and filters local HP update installation history. |
 
+When the running Windows release has no HP catalog yet, `Get-HPUpdate` uses the newest available supported release and works backward until it finds an HP catalog.
+
 ```powershell
 Get-HPUpdate
 Get-HPUpdate -Type Drivers

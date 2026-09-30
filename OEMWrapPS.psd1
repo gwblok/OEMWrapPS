@@ -12,7 +12,7 @@
 RootModule = 'OEMWrapPS.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.1.7'
+ModuleVersion = '1.1.10'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()

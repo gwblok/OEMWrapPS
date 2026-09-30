@@ -124,24 +124,27 @@ function ConvertTo-HPUpdateVersion {
     $null
 }
 
-function Expand-HPUpdatePathToken {
-    param([string]$Path)
+function Resolve-HPUpdateDetailPath {
+    param([Parameter(Mandatory)][string]$Path)
 
-    $tokens = [ordered]@{
-        '<WINSYSDIR>'            = (Join-Path $env:windir 'System32')
-        '<DRIVERS>'              = (Join-Path $env:windir 'System32\drivers')
-        '<WINDIR>'               = $env:windir
-        '<SYSTEMDRIVE>'          = $env:SystemDrive
-        '<PROGRAMFILESDIRX86>'   = ${env:ProgramFiles(x86)}
-        '<PROGRAMFILESDIR>'      = $env:ProgramFiles
-        '<PROGRAMFILES>'         = $env:ProgramFiles
-        '<COMMONPROGRAMFILES>'   = $env:CommonProgramFiles
-        '<PROGRAMDATA>'          = $env:ProgramData
+    $resolvedPath = $Path
+    $tokenPaths = [ordered]@{
+        '<WINSYSDIR>' = (Join-Path $env:windir 'System32')
+        '<DRIVERS>' = (Join-Path $env:windir 'System32\drivers')
+        '<WINDIR>' = $env:windir
+        '<WINDISK>' = [IO.Path]::GetPathRoot($env:windir).TrimEnd('\')
+        '<SYSTEMDRIVE>' = $env:SystemDrive
+        '<PROGRAMFILESDIRX86>' = ${env:ProgramFiles(x86)}
+        '<PROGRAMFILESDIR>' = $env:ProgramFiles
+        '<PROGRAMFILES>' = $env:ProgramFiles
+        '<COMMONPROGRAMFILES>' = $env:CommonProgramFiles
+        '<PROGRAMDATA>' = $env:ProgramData
     }
-    foreach ($token in $tokens.Keys) {
-        if ($tokens[$token]) { $Path = [regex]::Replace($Path, [regex]::Escape($token), { $tokens[$token] }, 'IgnoreCase') }
+    foreach ($token in $tokenPaths.Keys) {
+        if ($tokenPaths[$token]) { $resolvedPath = $resolvedPath -ireplace [regex]::Escape($token), [string]$tokenPaths[$token] }
     }
-    $Path
+    if ($resolvedPath -match '<[^>]+>') { return $null }
+    $resolvedPath
 }
 
 function Get-HPUpdateDeviceMatches {
@@ -185,12 +188,19 @@ function Get-HPUpdateDetailFileState {
         $cacheKey = [string]$detailFile.fileName
         if (-not $FileVersionCache.ContainsKey($cacheKey)) {
             $candidates = [System.Collections.Generic.List[object]]::new()
-            $expandedPath = Expand-HPUpdatePathToken -Path ([string]$detailFile.path)
-            $directPath = Join-Path $expandedPath $detailFile.fileName
-            if (Test-Path -LiteralPath $directPath -PathType Leaf) {
-                $candidates.Add((Get-Item -LiteralPath $directPath))
+            $expandedPath = Resolve-HPUpdateDetailPath -Path ([string]$detailFile.path)
+            if ($expandedPath) {
+                try {
+                    $directPath = Join-Path $expandedPath $detailFile.fileName
+                    if (Test-Path -LiteralPath $directPath -PathType Leaf) {
+                        $candidates.Add((Get-Item -LiteralPath $directPath))
+                    }
+                }
+                catch {
+                    Write-Verbose "Ignoring invalid HP detail-file path '$($detailFile.path)': $($_.Exception.Message)"
+                }
             }
-            elseif ($expandedPath -match '(?i)DriverStore\\FileRepository') {
+            if ($expandedPath -and $expandedPath -match '(?i)DriverStore\\FileRepository') {
                 $driverStore = Join-Path $env:windir 'System32\DriverStore\FileRepository'
                 foreach ($file in (Get-ChildItem -LiteralPath $driverStore -Filter $detailFile.fileName -File -Recurse -ErrorAction SilentlyContinue)) { $candidates.Add($file) }
             }

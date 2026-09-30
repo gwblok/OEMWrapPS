@@ -33,6 +33,7 @@ function Get-HPUpdate {
     $device = Get-HPUpdateDeviceInfo
     $operatingSystem = Get-HPUpdateOperatingSystem
     $catalog = Get-HPUpdateCatalog -Platform $device.Platform -OperatingSystem $operatingSystem -UseCachedCatalog:$UseCachedCatalog -CatalogDirectory $CatalogDirectory
+    $operatingSystem = $catalog.SelectedOperatingSystem
     $softpaqs = @($catalog.softpaqs)
     $driverInventory = @()
     $referenceCatalog = $null

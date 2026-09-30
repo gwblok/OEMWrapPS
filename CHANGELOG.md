@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.10] - 2026-09-29
+
+### Changed
+
+- `Install-HPUpdate` now reports preparation, per-package download progress, cached payload reuse, installation phase progress, download failures, and a final installation summary, matching the Dell client update workflow.
+
+## [1.1.9] - 2026-09-29
+
+### Fixed
+
+- `Get-HPUpdate` now expands HP catalog detail-file tokens such as `<PROGRAMFILESDIRX86>`, `<WINDISK>`, and `<WINDIR>` before testing local files. Unrecognized tokens are skipped safely instead of producing invalid-path errors.
+
+## [1.1.8] - 2026-09-29
+
+### Fixed
+
+- `Get-HPUpdate` now falls back through older HP-supported Windows releases when the running release has no HP catalog mapping. For example, an unavailable Windows 11 26H2 catalog falls back to 25H2, then older supported releases as needed.
+
 ## [1.1.7] - 2026-09-29
 
 ### Changed
