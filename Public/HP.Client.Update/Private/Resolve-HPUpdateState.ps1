@@ -53,6 +53,51 @@ function ConvertTo-HPUpdateVersion {
     $null
 }
 
+function Expand-HPUpdatePathToken {
+    param([string]$Path)
+
+    $tokens = [ordered]@{
+        '<WINSYSDIR>'            = (Join-Path $env:windir 'System32')
+        '<DRIVERS>'              = (Join-Path $env:windir 'System32\drivers')
+        '<WINDIR>'               = $env:windir
+        '<SYSTEMDRIVE>'          = $env:SystemDrive
+        '<PROGRAMFILESDIRX86>'   = ${env:ProgramFiles(x86)}
+        '<PROGRAMFILESDIR>'      = $env:ProgramFiles
+        '<PROGRAMFILES>'         = $env:ProgramFiles
+        '<COMMONPROGRAMFILES>'   = $env:CommonProgramFiles
+        '<PROGRAMDATA>'          = $env:ProgramData
+    }
+    foreach ($token in $tokens.Keys) {
+        if ($tokens[$token]) { $Path = [regex]::Replace($Path, [regex]::Escape($token), { $tokens[$token] }, 'IgnoreCase') }
+    }
+    $Path
+}
+
+function Get-HPUpdateDeviceMatches {
+    param(
+        [Parameter(Mandatory)][psobject]$Softpaq,
+        [object[]]$DriverInventory = @(),
+        [System.Xml.XmlDocument]$ReferenceCatalog
+    )
+
+    $deviceMatches = [System.Collections.Generic.List[object]]::new()
+    foreach ($device in @($Softpaq.devices)) {
+        $deviceId = ([string]$device.matchId).Trim().Trim('*')
+        if ([string]::IsNullOrWhiteSpace($deviceId)) { continue }
+        $installedDevice = @($DriverInventory | Where-Object { $_.DeviceID.IndexOf($deviceId, [StringComparison]::OrdinalIgnoreCase) -ge 0 } | Select-Object -First 1)
+        if (-not $installedDevice) { continue }
+        $referenceDevice = if ($ReferenceCatalog) { @($ReferenceCatalog.SelectNodes('ImagePal/Devices/Device') | Where-Object { ([string]$_.DeviceID).IndexOf($deviceId, [StringComparison]::OrdinalIgnoreCase) -ge 0 } | Select-Object -First 1) } else { $null }
+        $deviceMatches.Add([pscustomobject]@{
+            DeviceName = [string]$installedDevice.DeviceName
+            DeviceId = [string]$installedDevice.DeviceID
+            InstalledVersion = [string]$installedDevice.DriverVersion
+            ExpectedVersion = if ($referenceDevice) { [string]$referenceDevice.DriverVersion } else { '' }
+            ReferenceMatched = [bool]$referenceDevice
+        })
+    }
+    @($deviceMatches)
+}
+
 function Get-HPUpdateDetailFileState {
     param(
         [Parameter(Mandatory)][psobject]$Softpaq,
@@ -69,7 +114,7 @@ function Get-HPUpdateDetailFileState {
         $cacheKey = [string]$detailFile.fileName
         if (-not $FileVersionCache.ContainsKey($cacheKey)) {
             $candidates = [System.Collections.Generic.List[object]]::new()
-            $expandedPath = ([string]$detailFile.path).Replace('<WINSYSDIR>', (Join-Path $env:windir 'System32')).Replace('<DRIVERS>', (Join-Path $env:windir 'System32\drivers')).Replace('<ProgramFilesDir>', $env:ProgramFiles)
+            $expandedPath = Expand-HPUpdatePathToken -Path ([string]$detailFile.path)
             $directPath = Join-Path $expandedPath $detailFile.fileName
             if (Test-Path -LiteralPath $directPath -PathType Leaf) {
                 $candidates.Add((Get-Item -LiteralPath $directPath))
@@ -112,21 +157,7 @@ function Resolve-HPUpdateState {
         [Parameter(Mandatory)][hashtable]$FileVersionCache
     )
 
-    $matches = [System.Collections.Generic.List[object]]::new()
-    foreach ($device in @($Softpaq.devices)) {
-        $deviceId = ([string]$device.matchId).Trim().Trim('*')
-        if ([string]::IsNullOrWhiteSpace($deviceId)) { continue }
-        $installedDevice = @($DriverInventory | Where-Object { $_.DeviceID.IndexOf($deviceId, [StringComparison]::OrdinalIgnoreCase) -ge 0 } | Select-Object -First 1)
-        if (-not $installedDevice) { continue }
-        $referenceDevice = @($ReferenceCatalog.SelectNodes('ImagePal/Devices/Device') | Where-Object { ([string]$_.DeviceID).IndexOf($deviceId, [StringComparison]::OrdinalIgnoreCase) -ge 0 } | Select-Object -First 1)
-        $matches.Add([pscustomobject]@{
-            DeviceName = [string]$installedDevice.DeviceName
-            DeviceId = [string]$installedDevice.DeviceID
-            InstalledVersion = [string]$installedDevice.DriverVersion
-            ExpectedVersion = if ($referenceDevice) { [string]$referenceDevice.DriverVersion } else { '' }
-            ReferenceMatched = [bool]$referenceDevice
-        })
-    }
+    $matches = @(Get-HPUpdateDeviceMatches -Softpaq $Softpaq -DriverInventory $DriverInventory -ReferenceCatalog $ReferenceCatalog)
 
     if (-not $matches.Count) { return [pscustomobject]@{ IsApplicable = $false; IsInstalled = $null; WhyApplicable = 'No supported installed device was found.'; Matches = @() } }
 

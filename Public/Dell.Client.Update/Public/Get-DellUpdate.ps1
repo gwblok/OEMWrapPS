@@ -212,12 +212,19 @@ function Get-DellUpdate {
 
     $delaySummary = if ($effectiveDelayDays -gt 0) { "; $($deferredUpdates.Count) deferred by the $effectiveDelayDays-day policy" } else { '' }
     Write-Host "Model catalog evaluation complete: $componentCount packages checked; $matchedFamilyCount installed component families matched$delaySummary."
+    $returnedCount = 0
     foreach ($update in $latestUpdates) {
         if (-not $All -and $update.IsInstalled -ne $false) { continue }
         if ($ExplainRules) {
             $matchSummary = @($update.MatchedDevices | ForEach-Object { "$($_.DeviceName): $($_.InstalledVersion) -> $($_.ExpectedVersion)" }) -join '; '
             Write-Verbose "$($update.ReleaseID) $($update.Name): installed=$($update.IsInstalled); $matchSummary"
         }
+        $returnedCount++
         $update
+    }
+
+    if (-not $returnedCount) {
+        $emptyMessage = if ($All) { "No applicable Dell updates were found for system ID $systemId." } else { "No applicable Dell updates are pending for system ID $systemId. All matched components are current." }
+        Write-Host $emptyMessage
     }
 }

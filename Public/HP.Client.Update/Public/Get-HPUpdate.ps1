@@ -38,30 +38,35 @@ function Get-HPUpdate {
     $referenceCatalog = $null
     $fileVersionCache = @{}
     $appxPackages = @()
-    if (-not $NoTestInstalled -and @($softpaqs | Where-Object { $_.type -eq 'Driver' }).Count) {
+    if (-not $NoTestInstalled) {
         $driverInventory = Get-HPUpdateDriverInventory
-        $referenceCatalog = Get-HPUpdateReferenceCatalog -Platform $device.Platform -OperatingSystem $operatingSystem -CatalogDirectory $CatalogDirectory
-        $appxPackages = @(Get-AppxPackage -ErrorAction Stop)
+        if (@($softpaqs | Where-Object { $_.type -eq 'Driver' }).Count) {
+            $referenceCatalog = Get-HPUpdateReferenceCatalog -Platform $device.Platform -OperatingSystem $operatingSystem -CatalogDirectory $CatalogDirectory
+            # -AllUsers needs elevation; fall back to the current user's packages otherwise.
+            $appxPackages = @(try { Get-AppxPackage -AllUsers -ErrorAction Stop } catch { Get-AppxPackage -ErrorAction Stop })
+        }
     }
 
     Write-Host "Evaluating HP update catalog for platform $($device.Platform) ($($device.Model)) ..."
     $candidateUpdates = [System.Collections.Generic.List[object]]::new()
     foreach ($softpaq in $softpaqs) {
-        $isRequired = [string]$softpaq.isSoftpaqRequired -match '^(?i:true|1)$'
         $state = if ($NoTestInstalled) {
             [pscustomobject]@{ IsApplicable = $true; IsInstalled = $null; WhyApplicable = 'Installed state was not evaluated.'; Matches = @() }
         }
-        elseif ($softpaq.type -eq 'Driver' -and [string]$softpaq.isUwpApp -match '^(?i:true|1)$') {
-            Resolve-HPUpdateUwpState -Softpaq $softpaq -AppxPackages $appxPackages
-        }
         elseif ($softpaq.type -eq 'Driver') {
-            Resolve-HPUpdateState -Softpaq $softpaq -DriverInventory $driverInventory -ReferenceCatalog $referenceCatalog -OperatingSystem $operatingSystem -FileVersionCache $fileVersionCache
+            $driverState = Resolve-HPUpdateState -Softpaq $softpaq -DriverInventory $driverInventory -ReferenceCatalog $referenceCatalog -OperatingSystem $operatingSystem -FileVersionCache $fileVersionCache
+            # The UWP companion app is only a supplementary signal once the device itself matched.
+            if ($driverState.IsApplicable -and $driverState.IsInstalled -and [string]$softpaq.isUwpApp -match '^(?i:true|1)$') {
+                $uwpState = Resolve-HPUpdateUwpState -Softpaq $softpaq -AppxPackages $appxPackages
+                if ($uwpState.IsApplicable -and $uwpState.IsInstalled -eq $false) { $uwpState } else { $driverState }
+            }
+            else { $driverState }
         }
         elseif ($softpaq.type -eq 'ROMPAQ') {
             Resolve-HPUpdateBiosState -Softpaq $softpaq
         }
         else {
-            [pscustomobject]@{ IsApplicable = $true; IsInstalled = -not $isRequired; WhyApplicable = if ($isRequired) { 'HP recommends this SoftPaq for the current device state.' } else { 'HP reports this SoftPaq is current for the device.' }; Matches = @() }
+            Resolve-HPUpdateApplicationState -Softpaq $softpaq -DriverInventory $driverInventory -OperatingSystem $operatingSystem -FileVersionCache $fileVersionCache
         }
         $releaseDate = [datetime]::MinValue
         $null = [datetime]::TryParse([string]$softpaq.effectivityDate, [ref]$releaseDate)
@@ -122,6 +127,7 @@ function Get-HPUpdate {
         }
     }
 
+    $returnedCount = 0
     foreach ($update in $candidateUpdates) {
         if (-not $All -and $update.IsInstalled -ne $false) { continue }
         $matchesType = switch ($Type) {
@@ -134,6 +140,17 @@ function Get-HPUpdate {
         }
         if (-not $matchesType) { continue }
         if ($ReleaseType -ne 'All' -and $update.ReleaseType -ne $ReleaseType) { continue }
+        $returnedCount++
         $update
+    }
+
+    if (-not $returnedCount) {
+        $scope = @(
+            if ($Type -ne 'All') { "type '$Type'" }
+            if ($ReleaseType -ne 'All') { "release type '$ReleaseType'" }
+        ) -join ' and '
+        $scopeSuffix = if ($scope) { " matching $scope" } else { '' }
+        $emptyMessage = if ($All) { "No applicable HP SoftPaqs$scopeSuffix were found for platform $($device.Platform)." } else { "No HP SoftPaqs$scopeSuffix are pending for platform $($device.Platform). All applicable packages are current." }
+        Write-Host $emptyMessage
     }
 }

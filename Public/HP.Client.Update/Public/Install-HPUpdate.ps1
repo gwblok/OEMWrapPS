@@ -72,6 +72,16 @@ function Install-HPUpdate {
         if ($PSBoundParameters.ContainsKey('Type')) { $selectedPackages = @($selectedPackages | Where-Object { $_.Type -in $Type }) }
         if ($PSBoundParameters.ContainsKey('ReleaseType')) { $selectedPackages = @($selectedPackages | Where-Object { $_.ReleaseType -in $ReleaseType }) }
         $selectedPackages = @($selectedPackages | Sort-Object ID -Unique)
+
+        # BIOS flashing carries the highest failure risk, so it is never automated here.
+        $skippedBiosPackages = @($selectedPackages | Where-Object { $_.Type -eq 'ROMPAQ' -or $_.Category -like 'BIOS -*' })
+        if ($skippedBiosPackages.Count) {
+            $selectedPackages = @($selectedPackages | Where-Object { $_ -notin $skippedBiosPackages })
+            foreach ($biosPackage in $skippedBiosPackages) {
+                Write-Host "Skipping BIOS update $($biosPackage.ID) ($($biosPackage.Name) $($biosPackage.Version)) to reduce risk. Apply it separately."
+            }
+        }
+
         if (-not $selectedPackages.Count) { Write-Verbose 'No applicable HP updates matched the specified criteria.'; return }
 
         foreach ($package in $selectedPackages) {
@@ -93,6 +103,7 @@ function Install-HPUpdate {
             $logDirectory = Get-HPUpdatePath -Name Logs -Create
             $logPath = Join-Path $logDirectory "$(Get-Date -Format 'yyyyMMdd_HHmmss_fff')-$([guid]::NewGuid().ToString('N')).log"
             Write-HPUpdateInstallationLog "Selected $($selectedPackages.Count) HP update package(s)."
+            foreach ($biosPackage in $skippedBiosPackages) { Write-HPUpdateInstallationLog "Skipped BIOS update $($biosPackage.ID) ($($biosPackage.Name) $($biosPackage.Version)) by policy." }
         }
         try {
             $downloadedPackages = [System.Collections.Generic.List[object]]::new()
