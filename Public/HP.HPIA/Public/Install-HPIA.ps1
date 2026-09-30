@@ -14,7 +14,26 @@ function Install-HPIA {
     Invoke-WebRequest -Uri $latest.DownloadUri -OutFile $downloadPath -UseBasicParsing -ErrorAction Stop
     $signature = Get-AuthenticodeSignature -LiteralPath $downloadPath -ErrorAction Stop
     if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) { throw "HPIA download signature validation failed: $($signature.StatusMessage)" }
-    $process = Start-Process -FilePath $downloadPath -WorkingDirectory $HPIAInstallPath -ArgumentList '/s /f .\ /e' -NoNewWindow -PassThru -Wait -ErrorAction Stop
-    if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $executablePath -PathType Leaf)) { throw "HPIA extraction failed with exit code $($process.ExitCode)." }
+
+    $argumentAttempts = @(
+        "/s /e /f `"$HPIAInstallPath`"",
+        "/s /f `"$HPIAInstallPath`" /e",
+        '/s /f .\ /e'
+    )
+    $lastExitCode = $null
+    foreach ($arguments in $argumentAttempts) {
+        $process = Start-Process -FilePath $downloadPath -WorkingDirectory $HPIAInstallPath -ArgumentList $arguments -NoNewWindow -PassThru -Wait -ErrorAction Stop
+        $lastExitCode = $process.ExitCode
+        if ($lastExitCode -eq 0 -and (Test-Path -LiteralPath $executablePath -PathType Leaf)) { break }
+    }
+
+    if (-not (Test-Path -LiteralPath $executablePath -PathType Leaf)) {
+        $nestedExecutable = @(Get-ChildItem -LiteralPath $HPIAInstallPath -Filter 'HPImageAssistant.exe' -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+        if ($nestedExecutable) {
+            Copy-Item -LiteralPath $nestedExecutable.FullName -Destination $executablePath -Force
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $executablePath -PathType Leaf)) { throw "HPIA extraction failed with exit code $lastExitCode." }
     [pscustomobject]@{ Version = (Get-Item -LiteralPath $executablePath).VersionInfo.FileVersion; InstallPath = $HPIAInstallPath; ExecutablePath = $executablePath; Updated = $true }
 }

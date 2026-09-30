@@ -6,30 +6,101 @@ function Get-HPUpdateReferenceCatalog {
     )
 
     $architecture = if ([Environment]::Is64BitOperatingSystem) { '64' } else { '32' }
-    $referenceVersion = if ($OperatingSystem.Family -eq 'win11') { "11.0.$($OperatingSystem.Version)" } else { "10.0.$($OperatingSystem.Version)" }
-    $cabReferenceVersion = $referenceVersion.ToLowerInvariant()
-    $referenceName = "${Platform}_${architecture}_${referenceVersion}"
-    $cabReferenceName = "${Platform}_${architecture}_${cabReferenceVersion}"
     $referenceDirectory = Join-Path $CatalogDirectory 'Reference'
-    $cabPath = Join-Path $referenceDirectory "$cabReferenceName.cab"
-    $extractDirectory = "$cabPath.dir"
-    $xmlPath = @(Get-ChildItem -LiteralPath $extractDirectory -Filter '*.xml' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName)
+    $versions = @($(if ($OperatingSystem.Family -eq 'win11') { '11.0' } else { '10.0' }) + '.' + $OperatingSystem.Version.ToLowerInvariant())
+    if ($OperatingSystem.Family -eq 'win11' -and $OperatingSystem.Version -eq '25H2') { $versions += '11.0.24h2' }
+    $xmlPath = $null
+    $expandPath = Join-Path $env:SystemRoot 'System32\expand.exe'
 
-    if (-not $xmlPath) {
+    function Test-HPUpdateCabSignature {
+        param([Parameter(Mandatory)][string]$Path)
+
+        try {
+            $stream = [System.IO.File]::OpenRead($Path)
+            try {
+                if ($stream.Length -lt 4) { return $false }
+                $buffer = [byte[]]::new(4)
+                $null = $stream.Read($buffer, 0, 4)
+                return ([System.Text.Encoding]::ASCII.GetString($buffer) -eq 'MSCF')
+            }
+            finally {
+                $stream.Dispose()
+            }
+        }
+        catch {
+            return $false
+        }
+    }
+
+    function Get-HPUpdateExtractedXmlPath {
+        param([Parameter(Mandatory)][string]$Directory)
+
+        $xmlPathByName = @(Get-ChildItem -LiteralPath $Directory -Filter '*.xml' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName)
+        if ($xmlPathByName) { return $xmlPathByName }
+
+        foreach ($candidate in @(Get-ChildItem -LiteralPath $Directory -File -Recurse -ErrorAction SilentlyContinue)) {
+            try {
+                $document = [System.Xml.XmlDocument]::new()
+                $document.XmlResolver = $null
+                $document.Load($candidate.FullName)
+                if ($document.DocumentElement -and $document.DocumentElement.LocalName -eq 'ImagePal') { return $candidate.FullName }
+            }
+            catch [System.Xml.XmlException] { }
+        }
+        $null
+    }
+
+    foreach ($version in $versions) {
+        $cabReferenceName = "${Platform}_${architecture}_${version}"
+        $cabPath = Join-Path $referenceDirectory "$cabReferenceName.cab"
+        $extractDirectory = "$cabPath.dir"
+        $xmlPath = @(Get-ChildItem -LiteralPath $extractDirectory -Filter '*.xml' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName)
+        if ($xmlPath) { break }
+
         $null = New-Item -Path $referenceDirectory -ItemType Directory -Force
-        Invoke-WebRequest -Uri "https://hpia.hpcloud.hp.com/ref/$Platform/$cabReferenceName.cab" -OutFile $cabPath -ErrorAction Stop
+        try {
+            Invoke-WebRequest -Uri "https://hpia.hpcloud.hp.com/ref/$Platform/$cabReferenceName.cab" -OutFile $cabPath -UseBasicParsing -ErrorAction Stop
+        }
+        catch {
+            $statusCode = $null
+            if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+                $statusCode = [int]$_.Exception.Response.StatusCode
+            }
+            if ($version -eq '11.0.25h2' -and $statusCode -eq 404) { continue }
+            throw
+        }
+
+        if (-not (Test-Path -LiteralPath $cabPath -PathType Leaf)) { continue }
+        $cabItem = Get-Item -LiteralPath $cabPath -ErrorAction SilentlyContinue
+        if (-not $cabItem -or $cabItem.Length -le 0) { continue }
+
         Remove-Item -LiteralPath $extractDirectory -Recurse -Force -ErrorAction SilentlyContinue
         $null = New-Item -Path $extractDirectory -ItemType Directory -Force
-        $shell = New-Object -ComObject Shell.Application
-        try {
-            $sourceCab = $shell.Namespace($cabPath).Items()
-            $destination = $shell.Namespace($extractDirectory)
-            $destination.CopyHere($sourceCab)
+        $queue = [System.Collections.Generic.Queue[string]]::new()
+        $queue.Enqueue($cabPath)
+        $depth = 0
+        while ($queue.Count -and -not $xmlPath -and $depth -lt 4) {
+            $depth++
+            $currentCabPath = $queue.Dequeue()
+            $stageDirectory = Join-Path $extractDirectory "stage$depth"
+            Remove-Item -LiteralPath $stageDirectory -Recurse -Force -ErrorAction SilentlyContinue
+            $null = New-Item -Path $stageDirectory -ItemType Directory -Force
+
+            $expandOutput = & $expandPath $currentCabPath '-F:*' $stageDirectory 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Verbose "Could not extract '$currentCabPath' (expand.exe exit code $LASTEXITCODE). $($expandOutput -join ' ')"
+                continue
+            }
+
+            $xmlPath = @(Get-HPUpdateExtractedXmlPath -Directory $stageDirectory)
+            if ($xmlPath) { break }
+
+            foreach ($innerCab in @(Get-ChildItem -LiteralPath $stageDirectory -Filter '*.cab' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)) {
+                if ($innerCab -and $innerCab -ne $currentCabPath -and (Test-HPUpdateCabSignature -Path $innerCab)) { $queue.Enqueue($innerCab) }
+            }
         }
-        finally {
-            [System.Runtime.InteropServices.Marshal]::ReleaseComObject([System.__ComObject]$shell) | Out-Null
-        }
-        $xmlPath = @(Get-ChildItem -LiteralPath $extractDirectory -Filter '*.xml' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName)
+
+        if ($xmlPath) { break }
     }
 
     if (-not $xmlPath) { throw "HP reference XML was not created from '$cabPath'." }
