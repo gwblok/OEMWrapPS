@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.11] - 2026-10-19
+
+### Changed
+
+- `Invoke-DCU` now writes Dell Command Update CLI logs to `C:\OEMWrapPS\Logs` (`$env:SystemDrive\OEMWrapPS\Logs`) instead of `C:\ProgramData\OEMWrapPS\Logs`, because the DCU CLI does not accept log paths under ProgramData.
+- `Set-DCUSettings` now writes its DCU CLI configure logs to `C:\OEMWrapPS\Logs` for the same reason. The log directory is created when missing.
+
 ## [1.1.10] - 2026-09-29
 
 ### Changed

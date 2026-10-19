@@ -18,7 +18,7 @@ function Invoke-DCU {
     [switch]$applyUpdates
     )
     $DCUPath = (Get-DCUInstallDetails).DCUPath
-    $LogPath = "$env:ProgramData\OEMWrapPS\Logs"
+    $LogPath = "$env:SystemDrive\OEMWrapPS\Logs"
     if (!(Test-Path $LogPath)){$null = New-Item -Path $LogPath -ItemType Directory -Force}
     #Build Argument Strings for each parameter
     if ($updateSeverity){

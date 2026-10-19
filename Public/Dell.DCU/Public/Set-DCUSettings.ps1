@@ -45,7 +45,7 @@ function Set-DCUSettings {
     
     $DCUPath = (Get-DCUInstallDetails).DCUPath
     Write-Verbose "DCU Path: $DCUPath"
-    $LogPath = "$env:ProgramData\OEMWrapPS\Logs"
+    $LogPath = "$env:SystemDrive\OEMWrapPS\Logs"
     if (!(Test-Path $LogPath)){$null = New-Item -Path $LogPath -ItemType Directory -Force}
     Write-Verbose "Log Path: $LogPath"
     $DateTimeStamp = Get-Date -Format "yyyyMMdd-HHmmss"
