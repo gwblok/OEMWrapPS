@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.13] - 2026-10-19
+
+### Fixed
+
+- `Install-DellUpdate` no longer rejects Dell packages signed as `O=Dell Inc` (no trailing period). The signer check now accepts `Dell Inc`, `Dell Inc.`, `Dell Technologies Inc`, and `Dell Technologies Inc.`; packages such as the Intel Rapid Storage Technology and Intel HID Event Filter drivers previously failed Authenticode validation even though the signature was valid.
+
+## [1.1.12] - 2026-10-19
+
+### Fixed
+
+- `Install-DellUpdate` now deletes a cached payload that fails Authenticode signature validation, so the next run downloads it again instead of reusing the same failing file.
+
 ## [1.1.11] - 2026-10-19
 
 ### Changed

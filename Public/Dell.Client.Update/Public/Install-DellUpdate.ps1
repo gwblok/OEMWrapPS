@@ -258,6 +258,7 @@ function Install-DellUpdate {
                 if (-not $PSCmdlet.ShouldProcess($package.Title, 'Download, verify, and install Dell update')) { continue }
 
                 $startedAt = Get-Date
+                $installerPath = $null
                 try {
                     Write-Host "Downloading update $downloadNumber of $($selectedPackages.Count): $($package.Title)"
                     $sourceUri = [uri]$package.DownloadUri
@@ -284,6 +285,10 @@ function Install-DellUpdate {
                 }
                 catch {
                     Write-DellInstallationLog "Failed to download or validate $($package.ReleaseID): $($_.Exception.Message)"
+                    if ($installerPath -and $_.Exception.Message -match 'Authenticode signature validation failed' -and (Test-Path -LiteralPath $installerPath)) {
+                        Remove-Item -LiteralPath $installerPath -Force -ErrorAction SilentlyContinue
+                        Write-DellInstallationLog "Removed '$installerPath' so the next run downloads it again."
+                    }
                     $result = [pscustomobject]@{
                         ID = $package.ID
                         PackageID = $package.PackageID

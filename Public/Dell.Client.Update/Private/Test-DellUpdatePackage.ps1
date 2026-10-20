@@ -10,7 +10,7 @@ function Test-DellUpdatePackage {
     }
 
     $signature = Get-AuthenticodeSignature -LiteralPath $Path -ErrorAction Stop
-    $trustedDellSigner = $signature.SignerCertificate -and $signature.SignerCertificate.Subject -match '(?i)(?:^|,\s*)O=Dell(?: Technologies)? Inc\.(?:,|$)'
+    $trustedDellSigner = $signature.SignerCertificate -and $signature.SignerCertificate.Subject -match '(?i)(?:^|,\s*)O=Dell(?: Technologies)? Inc\.?(?:,|$)'
     if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid -or -not $trustedDellSigner) {
         throw "Authenticode signature validation failed for '$Path': $($signature.StatusMessage)"
     }
